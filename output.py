@@ -89,14 +89,14 @@ def format_amount(amount, min_width=None):
         return chalk.yellow(f"{amount:{min_width},}")
     return chalk.yellow(f"{amount:,}")
 
-
 def format_amount_green(amount, min_width=None):
     return chalk.green(f"{amount:{min_width},}")
-
+    
+def format_amount_white(amount, min_width=None):
+    return chalk.white(f"{amount:{min_width},}")
 
 def format_boring_string(string):
     return chalk.bg_black(chalk.gray(string))
-
 
 def format_success(string):
     return chalk.bg_cyan(chalk.white_bright(string))

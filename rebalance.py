@@ -10,8 +10,18 @@ from yachalk import chalk
 
 from lnd import Lnd
 from logic import Logic
-from output import Output, format_alias, format_ppm, format_amount, format_amount_green, format_boring_string, \
+from output import Output, format_alias, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
     print_bar, format_channel_id, format_error
+
+
+# define routers, rest fee adjustment is manual
+routers = ['RecklessApotheosis', 'AfricaFreeRouting', 'MangoボTree', 'Sunny Sarah ☀️', 'BCash_Is_Trash', '', 'Nordlys', \
+           'deezy.io ⚡✨', 'Moon (paywithmoon.com)', 'cyberdyne.sh', 'NordicRails', 'ln.nicehash.com [Nicehash]', '🕊️ born to be free 🕊️']
+fee_level_1 = 0
+fee_level_2 = 1
+fee_level_3 = 9
+fee_level_4 = 49
+fee_level_5 = 99
 
 class Rebalance:
     def __init__(self, arguments):
@@ -186,8 +196,54 @@ class Rebalance:
             id_formatted = format_channel_id(candidate.chan_id)
             local_formatted = format_amount_green(get_local_available(candidate), 11)
             remote_formatted = format_amount(get_remote_available(candidate), 11)
-            alias_formatted = format_alias(self.lnd.get_node_alias(candidate.remote_pubkey))
-            print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {alias_formatted}")
+            alias = self.lnd.get_node_alias(candidate.remote_pubkey)
+            alias_formatted = format_alias(alias)
+            ratio_formatted = get_local_ratio(candidate)
+            if ratio_formatted < 0.25 or ratio_formatted > 0.75:
+                rebalance_value = "Yes"
+            else:
+                rebalance_value = " No"
+            own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
+            own_ppm_formatted = format_amount_white(own_ppm, 5)
+            remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
+            remote_ppm_formatted = format_amount_white(remote_ppm, 5)
+            update_fee = False
+            
+            if alias in routers:
+                is_router = True
+            else:
+                is_router = False
+                
+            if ratio_formatted > 0.6 and own_ppm > fee_level_1 and is_router:
+                update_fee = True
+                fee_level = fee_level_1
+                ratio = f"👉 {fee_level}  "
+            elif ratio_formatted >= 0.5 and ratio_formatted < 0.6 and own_ppm != fee_level_2 and is_router:
+                update_policy = self.lnd.update_channel_policy(fee_level_2, candidate.channel_point)
+                update_fee = True
+                fee_level = fee_level_2
+                ratio = f"👉 {fee_level}  "
+            elif ratio_formatted >= 0.3 and ratio_formatted < 0.5 and own_ppm != fee_level_3 and is_router:
+                update_fee = True
+                fee_level = fee_level_3
+                ratio = f"👉 {fee_level}  "              
+            elif ratio_formatted >= 0.1 and ratio_formatted < 0.3 and own_ppm != fee_level_4 and is_router:
+                update_fee = True
+                fee_level = fee_level_4
+                ratio = f"👉 {fee_level}  "
+            elif ratio_formatted < 0.2 and own_ppm != fee_level_5 and is_router:
+                update_fee = True
+                fee_level = fee_level_5
+                ratio = f"👉 {fee_level}  "
+            elif is_router:
+                ratio = "------"
+            else:
+                ratio = "Manual"
+                
+            if update_fee:
+                update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
+
+            print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {alias_formatted}")            
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:

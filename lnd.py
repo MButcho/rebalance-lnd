@@ -44,7 +44,7 @@ class Lnd:
         self.stub = lnrpc.LightningStub(grpc_channel)
         self.router_stub = lnrouterrpc.RouterStub(grpc_channel)
         self.invoices_stub = invoicesrpc.InvoicesStub(grpc_channel)
-
+    
     @staticmethod
     def get_credentials(lnd_dir, network):
         with open(f"{lnd_dir}/tls.cert", "rb") as f:
@@ -59,7 +59,7 @@ class Lnd:
             ssl_credentials, auth_credentials
         )
         return combined_credentials
-
+    
     @lru_cache(maxsize=None)
     def get_info(self):
         return self.stub.GetInfo(ln.GetInfoRequest())
@@ -151,6 +151,25 @@ class Lnd:
         if edge.node1_pub == self.get_own_pubkey():
             return edge.node1_policy
         return edge.node2_policy
+        
+    def update_channel_policy(self, fee_rate_msat: int, _channel_point: str):
+        if _channel_point:
+            funding_txid, output_index = _channel_point.split(":")
+            channel_point = ln.ChannelPoint(
+                funding_txid_str = funding_txid, output_index = int(output_index)
+            )
+        else:
+            channel_point = None
+            
+        request = ln.PolicyUpdateRequest(
+            chan_point = channel_point,
+            base_fee_msat = 0,
+            fee_rate = fee_rate_msat/1000000,
+            time_lock_delta = 40,            
+        )
+        
+        response = self.stub.UpdateChannelPolicy(request)
+        return response
 
     def get_policy_from(self, channel_id):
         edge = self.get_edge(channel_id)
