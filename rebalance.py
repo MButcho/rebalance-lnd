@@ -16,8 +16,8 @@ from output import Output, format_alias, format_ppm, format_amount, format_amoun
 
 
 # define routers, rest fee adjustment is manual
-routers = ['RecklessApotheosis', 'AfricaFreeRouting', 'MangoボTree', 'Sunny Sarah ☀️', 'BCash_Is_Trash', '', 'Nordlys', \
-           'deezy.io ⚡✨', 'Moon (paywithmoon.com)', 'cyberdyne.sh', 'NordicRails', 'ln.nicehash.com [Nicehash]', '🕊️ born to be free 🕊️']
+routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
+routers = routers_file.read().split('\n')
 fee_level_1 = 0
 fee_level_2 = 1
 fee_level_3 = 9
@@ -188,7 +188,6 @@ class Rebalance:
         print("")
 
     def list_channels_compact(self):
-        log = ""
         candidates = sorted(
             self.lnd.get_channels(active_only=True),
             key=lambda c: self.get_sort_key(c),
@@ -216,11 +215,11 @@ class Rebalance:
             else:
                 is_router = False
                 
-            if ratio_formatted > 0.6 and own_ppm > fee_level_1 and is_router:
+            if ratio_formatted > 0.8 and own_ppm > fee_level_1 and is_router:
                 update_fee = True
                 fee_level = fee_level_1
                 ratio = f"👉 {fee_level}  "
-            elif ratio_formatted >= 0.5 and ratio_formatted < 0.6 and own_ppm != fee_level_2 and is_router:
+            elif ratio_formatted >= 0.5 and ratio_formatted < 0.8 and own_ppm != fee_level_2 and is_router:
                 update_policy = self.lnd.update_channel_policy(fee_level_2, candidate.channel_point)
                 update_fee = True
                 fee_level = fee_level_2
@@ -246,11 +245,9 @@ class Rebalance:
                 if update_fee:
                     update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
                     time = datetime.now()
-                    log = log + f'\n{time.strftime("%d/%m/%Y %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_level}'
-                    
-
-            print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {alias_formatted}")            
-        print(log)
+                    print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_level}')
+            else:       
+                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {alias_formatted}")
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
