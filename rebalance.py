@@ -5,6 +5,7 @@ import os
 import platform
 import random
 import sys
+from datetime import datetime
 
 from yachalk import chalk
 
@@ -187,6 +188,7 @@ class Rebalance:
         print("")
 
     def list_channels_compact(self):
+        log = ""
         candidates = sorted(
             self.lnd.get_channels(active_only=True),
             key=lambda c: self.get_sort_key(c),
@@ -239,11 +241,16 @@ class Rebalance:
                 ratio = "------"
             else:
                 ratio = "Manual"
-                
-            if update_fee:
-                update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
+            
+            if self.arguments.update:
+                if update_fee:
+                    update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
+                    time = datetime.now()
+                    log = log + f'\n{time.strftime("%d/%m/%Y %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_level}'
+                    
 
             print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {alias_formatted}")            
+        print(log)
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
@@ -390,6 +397,12 @@ def get_argument_parser():
         dest="grpc",
         help="(default localhost:10009) lnd gRPC endpoint",
     )
+    parser.add_argument(
+        "-u",
+        "--update",
+        action='store_true', 
+        help="Update fees in conjunction with --compact",
+    )
     list_group = parser.add_argument_group(
         "list candidates", "Show the unbalanced channels."
     )
@@ -420,7 +433,7 @@ def get_argument_parser():
         dest="listcompact",
         help="Shows a compact list of all channels, one per line including ID, inbound/outbound liquidity, and alias",
     )
-
+    
     direction_group = list_group.add_mutually_exclusive_group()
     direction_group.add_argument(
         "-o",
