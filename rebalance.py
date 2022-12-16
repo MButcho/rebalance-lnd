@@ -21,6 +21,10 @@ routers = routers_file.read().split('\n')
 routers_fee_min = 0
 routers_fee_max = 199
 routers_fee_ratio = 0.5 # fee increase with ratio dropping
+events_count_min = 0 # lowest events number to calculate fee
+events_count_max = 100 # highest events number to calculate fee
+events_ratio_min = 0 # minimal coeficient to calculate fee
+events_ratio_max = 1.5 # maximal coeficient to calculate fee
 
 class Rebalance:
     def __init__(self, arguments):
@@ -218,14 +222,6 @@ class Rebalance:
             else:
                 fee_level = 0
             
-            if own_ppm != fee_level and is_router:
-                update_fee = True
-                ratio = f"👉 {fee_level}".ljust(5)
-            elif is_router:
-                ratio = "------"
-            else:
-                ratio = "Manual"
-            
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
@@ -236,6 +232,19 @@ class Rebalance:
                     events_count = events_count + 1
             events_count_formatted = format_amount_white(events_count, 4)
             
+            events_ratio = events_ratio_max*(events_count-events_count_max)/(events_count_min-events_count_max)
+            if self.arguments.update == False:
+                test_fee = round(events_ratio*fee_level)
+                #print(test_fee)
+            
+            if own_ppm != fee_level and is_router:
+                update_fee = True
+                ratio = f"👉 {fee_level}".ljust(5)
+            elif is_router:
+                ratio = "------"
+            else:
+                ratio = "Manual"
+            
             if self.arguments.update:
                 if update_fee:
                     update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
@@ -243,7 +252,9 @@ class Rebalance:
             else:       
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {events_count_formatted} | {alias_formatted}")
         
-        print("Total routing events in last 24 hours: " + str(events_response.last_offset_index))
+        if self.arguments.update == False:
+            print("Total routing events in last 24 hours: " + str(events_response.last_offset_index))
+
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
             channel_id = self.parse_channel_id(self.arguments.show_only)
