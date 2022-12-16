@@ -18,11 +18,9 @@ from output import Output, format_alias, format_ppm, format_amount, format_amoun
 # define routers, rest fee adjustment is manual
 routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
 routers = routers_file.read().split('\n')
-fee_level_1 = 0
-fee_level_2 = 1
-fee_level_3 = 9
-fee_level_4 = 49
-fee_level_5 = 99
+routers_fee_min = 0
+routers_fee_max = 199
+routers_fee_ratio = 0.5 # fee increase with ratio dropping
 
 class Rebalance:
     def __init__(self, arguments):
@@ -214,27 +212,14 @@ class Rebalance:
                 is_router = True
             else:
                 is_router = False
-                
-            if ratio_formatted > 0.8 and own_ppm > fee_level_1 and is_router:
+            
+            if ratio_formatted < routers_fee_ratio:
+                fee_level = round(routers_fee_max*(ratio_formatted-routers_fee_ratio)/(0-routers_fee_ratio))
+            else:
+                fee_level = 0
+            
+            if own_ppm != fee_level and is_router:
                 update_fee = True
-                fee_level = fee_level_1
-                ratio = f"👉 {fee_level}  "
-            elif ratio_formatted >= 0.5 and ratio_formatted < 0.8 and own_ppm != fee_level_2 and is_router:
-                update_policy = self.lnd.update_channel_policy(fee_level_2, candidate.channel_point)
-                update_fee = True
-                fee_level = fee_level_2
-                ratio = f"👉 {fee_level}  "
-            elif ratio_formatted >= 0.3 and ratio_formatted < 0.5 and own_ppm != fee_level_3 and is_router:
-                update_fee = True
-                fee_level = fee_level_3
-                ratio = f"👉 {fee_level}  "              
-            elif ratio_formatted >= 0.1 and ratio_formatted < 0.3 and own_ppm != fee_level_4 and is_router:
-                update_fee = True
-                fee_level = fee_level_4
-                ratio = f"👉 {fee_level}  "
-            elif ratio_formatted < 0.2 and own_ppm != fee_level_5 and is_router:
-                update_fee = True
-                fee_level = fee_level_5
                 ratio = f"👉 {fee_level}  "
             elif is_router:
                 ratio = "------"
