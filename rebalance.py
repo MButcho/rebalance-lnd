@@ -5,7 +5,7 @@ import os
 import platform
 import random
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from yachalk import chalk
 
@@ -203,9 +203,9 @@ class Rebalance:
             else:
                 rebalance_value = " No"
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
-            own_ppm_formatted = format_amount_white(own_ppm, 5)
+            own_ppm_formatted = format_amount_white(own_ppm, 4)
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
-            remote_ppm_formatted = format_amount_white(remote_ppm, 5)
+            remote_ppm_formatted = format_amount_white(remote_ppm, 4)
             update_fee = False
             
             if alias in routers:
@@ -220,20 +220,30 @@ class Rebalance:
             
             if own_ppm != fee_level and is_router:
                 update_fee = True
-                ratio = f"👉 {fee_level}  "
+                ratio = f"👉 {fee_level}".ljust(5)
             elif is_router:
                 ratio = "------"
             else:
                 ratio = "Manual"
             
+            time = datetime.now()
+            _to = int(round(time.timestamp()))
+            _from = int(round((time - timedelta(days=1)).timestamp()))
+            events_response = self.lnd.get_events(_from, _to)
+            events_count = 0
+            for event in events_response.forwarding_events:
+                if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
+                    events_count = events_count + 1
+            events_count_formatted = format_amount_white(events_count, 4)
+            
             if self.arguments.update:
                 if update_fee:
                     update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
-                    time = datetime.now()
                     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_level}')
             else:       
-                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {alias_formatted}")
-
+                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {events_count_formatted} | {alias_formatted}")
+        
+        print("Total routing events in last 24 hours: " + str(events_response.last_offset_index))
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
             channel_id = self.parse_channel_id(self.arguments.show_only)

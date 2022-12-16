@@ -177,6 +177,17 @@ class Lnd:
         if edge.node1_pub == self.get_own_pubkey():
             return edge.node2_policy
         return edge.node1_policy
+        
+    def get_events(self, _from, _to):
+        request = ln.ForwardingHistoryRequest(
+        start_time=_from,
+        end_time=_to,
+        #index_offset=<uint32>,
+        num_max_events=100000,
+        #peer_alias_lookup=True,
+        )
+        response = self.stub.ForwardingHistory(request)
+        return response
 
     def get_ppm_to(self, channel_id):
         return self.get_policy_to(channel_id).fee_rate_milli_msat
