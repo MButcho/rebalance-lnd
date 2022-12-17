@@ -19,7 +19,7 @@ from output import Output, format_alias, format_ppm, format_amount, format_amoun
 routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
 routers = routers_file.read().split('\n')
 routers_fee_min = 0
-routers_fee_max = 199
+routers_fee_max = 99
 routers_fee_ratio = 0.5 # fee increase with ratio dropping
 events_count_min = 0 # lowest events number to calculate fee
 events_count_max = 100 # highest events number to calculate fee
@@ -209,7 +209,7 @@ class Rebalance:
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
             own_ppm_formatted = format_amount_white(own_ppm, 4)
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
-            remote_ppm_formatted = format_amount_white(remote_ppm, 4)
+            remote_ppm_formatted = format_amount_white(remote_ppm, 5)
             update_fee = False
             
             if alias in routers:
