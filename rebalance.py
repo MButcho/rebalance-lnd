@@ -225,7 +225,9 @@ class Rebalance:
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
+            _from_7d = int(round((time - timedelta(days=7)).timestamp()))
             events_response = self.lnd.get_events(_from, _to)
+            events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
@@ -253,7 +255,7 @@ class Rebalance:
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {events_count_formatted} | {alias_formatted}")
         
         if self.arguments.update == False:
-            print("Total routing events in last 24 hours: " + str(events_response.last_offset_index))
+             print("Nodes: " + str(len(candidates)) + " | Routing events (24 hours): " + str(events_response.last_offset_index) + " | Routing events (7 days): " + str(events_response_7d.last_offset_index))
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
