@@ -49,6 +49,10 @@ def format_alias(alias):
         alias = alias.encode('latin-1', 'ignore').decode()
     return chalk.bold(alias)
 
+def format_alias_red(alias):
+    if not sys.stdout.encoding.lower().startswith('utf'):
+        alias = alias.encode('latin-1', 'ignore').decode()
+    return chalk.bold.red(alias)
 
 def format_ppm(ppm, min_length=None):
     if min_length:

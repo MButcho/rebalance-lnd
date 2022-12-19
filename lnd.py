@@ -72,7 +72,12 @@ class Lnd:
 
     def get_own_pubkey(self):
         return self.get_info().identity_pubkey
-
+    
+    def get_wallet_balance(self):
+        request = ln.WalletBalanceRequest()
+        response = self.stub.WalletBalance(request)
+        return response.total_balance
+    
     def generate_invoice(self, memo, amount):
         invoice_request = ln.Invoice(
             memo=memo,

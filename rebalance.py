@@ -11,7 +11,7 @@ from yachalk import chalk
 
 from lnd import Lnd
 from logic import Logic
-from output import Output, format_alias, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
+from output import Output, format_alias, format_alias_red, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
     print_bar, format_channel_id, format_error
 
 
@@ -191,16 +191,24 @@ class Rebalance:
 
     def list_channels_compact(self):
         candidates = sorted(
-            self.lnd.get_channels(active_only=True),
+            self.lnd.get_channels(active_only=False),
             key=lambda c: self.get_sort_key(c),
             reverse=False
             )
+        
+        commit_fee = 0
+        local_balance = 0
+        pending_amount = 0
         for candidate in candidates:
             id_formatted = format_channel_id(candidate.chan_id)
+            active = bool(candidate.active)
             local_formatted = format_amount_green(get_local_available(candidate), 11)
             remote_formatted = format_amount(get_remote_available(candidate), 11)
             alias = self.lnd.get_node_alias(candidate.remote_pubkey)
-            alias_formatted = format_alias(alias)
+            if active:
+                alias_formatted = format_alias(alias)
+            else:
+                alias_formatted = format_alias_red(alias)
             ratio_formatted = get_local_ratio(candidate)
             if ratio_formatted < 0.25 or ratio_formatted > 0.75:
                 rebalance_value = "Yes"
@@ -211,6 +219,13 @@ class Rebalance:
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
             remote_ppm_formatted = format_amount_white(remote_ppm, 5)
             update_fee = False
+            commit_fee = commit_fee + int(candidate.commit_fee)
+            local_balance = local_balance + int(candidate.local_balance)
+            pending_htlcs = candidate.pending_htlcs
+            
+            for htlc in pending_htlcs:
+                if htlc.incoming == False:
+                    pending_amount = pending_amount + htlc.amount
             
             if alias in routers:
                 is_router = True
@@ -256,6 +271,8 @@ class Rebalance:
         
         if self.arguments.update == False:
              print("Nodes: " + str(len(candidates)) + " | Routing events (24 hours): " + str(events_response.last_offset_index) + " | Routing events (7 days): " + str(events_response_7d.last_offset_index))
+             wallet_balance = self.lnd.get_wallet_balance()
+             print("Wallet: " + str(wallet_balance) + " | Local: " + str(local_balance) + " | Commit: " + str(commit_fee) + " | HTLC: " + str(pending_amount) + " | Total: " + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
