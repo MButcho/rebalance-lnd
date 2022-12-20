@@ -60,6 +60,9 @@ class Rebalance:
                 get_remote_available(channel) - get_local_available(channel)
             )
         return rebalance_amount, self.lnd.get_ppm_to(channel.chan_id)
+        
+    def get_sort_key_ratio(self, channel):
+        return get_local_ratio(channel)
 
     def get_scaled_min_local(self, channel):
         local_available = get_local_available(channel)
@@ -192,8 +195,8 @@ class Rebalance:
     def list_channels_compact(self):
         candidates = sorted(
             self.lnd.get_channels(active_only=False),
-            key=lambda c: self.get_sort_key(c),
-            reverse=False
+            key=lambda c: self.get_sort_key_ratio(c),
+            reverse=True
             )
         
         commit_fee = 0
