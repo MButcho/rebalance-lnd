@@ -276,7 +276,7 @@ class Rebalance:
         
         if self.arguments.update == False:
              wallet_balance = self.lnd.get_wallet_balance()
-             print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + str(format_amount_red(inactive, 1)) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
+             print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
              #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
 
     def start(self):
