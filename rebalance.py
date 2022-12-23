@@ -224,7 +224,8 @@ class Rebalance:
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
             remote_ppm_formatted = format_amount_white(remote_ppm, 5)
             update_fee = False
-            commit_fee = commit_fee + int(candidate.commit_fee)
+            if candidate.initiator:
+                commit_fee += int(candidate.commit_fee)
             local_balance = local_balance + int(candidate.local_balance)
             pending_htlcs = candidate.pending_htlcs
             
