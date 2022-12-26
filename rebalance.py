@@ -21,8 +21,7 @@ routers = routers_file.read().split('\n')
 routers_fee_min = 0
 routers_fee_max = 99
 routers_fee_ratio = 0.5 # fee increase with ratio dropping
-events_count_min = 0 # lowest events number to calculate fee
-events_count_max = 100 # highest events number to calculate fee
+events_target = 25 # target events per node / 24 hours
 events_ratio_min = 0 # minimal coeficient to calculate fee
 events_ratio_max = 1.5 # maximal coeficient to calculate fee
 
@@ -254,15 +253,11 @@ class Rebalance:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
             events_count_formatted = format_amount_white(events_count, 4)
+            fee_adjusted = round((events_count/events_target)*fee_level)
             
-            events_ratio = events_ratio_max*(events_count-events_count_max)/(events_count_min-events_count_max)
-            if self.arguments.update == False:
-                test_fee = round(events_ratio*fee_level)
-                #print(test_fee)
-            
-            if own_ppm != fee_level and is_router:
+            if own_ppm != fee_adjusted and is_router:
                 update_fee = True
-                ratio = f"👉 {fee_level}".ljust(5)
+                ratio = f"👉 {fee_adjusted}".ljust(5)
             elif is_router:
                 ratio = "------"
             else:
@@ -270,8 +265,8 @@ class Rebalance:
             
             if self.arguments.update:
                 if update_fee:
-                    update_policy = self.lnd.update_channel_policy(fee_level, candidate.channel_point)
-                    print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_level}')
+                    update_policy = self.lnd.update_channel_policy(fee_adjusted, candidate.channel_point)
+                    print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
             else:       
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {events_count_formatted} | {alias_formatted}")
         
