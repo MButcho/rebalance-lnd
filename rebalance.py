@@ -21,9 +21,7 @@ routers = routers_file.read().split('\n')
 routers_fee_min = 0
 routers_fee_max = 99
 routers_fee_ratio = 0.5 # fee increase with ratio dropping
-events_target = 25 # target events per node / 24 hours
-events_ratio_min = 0 # minimal coeficient to calculate fee
-events_ratio_max = 1.5 # maximal coeficient to calculate fee
+events_target = 100 # target events per node / 24 hours
 
 class Rebalance:
     def __init__(self, arguments):
