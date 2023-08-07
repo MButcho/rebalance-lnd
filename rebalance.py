@@ -11,19 +11,30 @@ from yachalk import chalk
 
 from lnd import Lnd
 from logic import Logic
-from output import Output, format_alias, format_alias_red, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
+from output import Output, format_alias, format_alias_red, format_alias_green, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
     print_bar, format_channel_id, format_error, format_boring_string, format_amount_red
 
 
-# define routers, rest fee adjustment is manual
+# define routers, fee adjustment
 routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
 routers = routers_file.read().split('\n')
 #routers_fee_min = 0
 #routers_fee_max = 99
 #routers_fee_ratio = 0.5 # fee increase with ratio dropping
 #events_target = 100 # target events per node / 24 hours
-event_target_high = 50
-event_target_medium = 25
+events_target_high = 50
+events_target_medium = 25
+events_1d_high = 200
+events_1d_low = 100
+fee_adjust_file_path = os.path.dirname(sys.argv[0])+'/fee_adjust.conf'
+if os.path.isfile(fee_adjust_file_path) and os.stat(fee_adjust_file_path).st_size > 0: # if empty file
+    fee_adjust_file = open(fee_adjust_file_path, 'r')
+    fee_adjust = float(fee_adjust_file.read())        
+else:
+    fee_adjust_file = open(fee_adjust_file_path, 'w')
+    fee_adjust = 1
+    fee_adjust_file.write(str(fee_adjust))
+fee_adjust_file.close()
 
 class Rebalance:
     def __init__(self, arguments):
@@ -253,14 +264,17 @@ class Rebalance:
             events_response = self.lnd.get_events(_from, _to)
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
+            amount = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
+                    amount += event.amt_in
             events_count_formatted = format_amount_white(events_count, 4)
+            amount_formatted = amount/(10**8)
             
-            if events_count > event_target_high:
+            if events_count > events_target_high:
                 fee_level = "high";
-            elif events_count > event_target_medium:
+            elif events_count > events_target_medium:
                 fee_level = "medium";
             else:
                 fee_level = "low";
@@ -279,14 +293,32 @@ class Rebalance:
                 if update_fee:
                     update_policy = self.lnd.update_channel_policy(fee_adjusted, candidate.channel_point)
                     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
-            else:       
+            else:
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
+                #print(amount_formatted)
+        
+        events_1d = events_response.last_offset_index
+        fee_adjust_indicator = " -"
+        # running each 1 hour, fee adjustment 
+        if self.arguments.update and time.hour == 22:
+            if events_1d < events_1d_low and fee_adjust > 0.1:
+                fee_adjust_file = open(fee_adjust_file_path, 'w')
+                fee_adjust_file.write(str(round(fee_adjust-0.1, 1)))
+                fee_adjust_file.close()                
+            elif events_1d > events_1d_high and fee_adjust < 1.5:
+                fee_adjust_file = open(fee_adjust_file_path, 'w')
+                fee_adjust_file.write(str(round(fee_adjust+0.1, 1)))
+                fee_adjust_file.close()                
         
         if self.arguments.update == False:
-             wallet_balance = self.lnd.get_wallet_balance()
-             if len(candidates) > 0:
-                print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
-                #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC")
+            wallet_balance = self.lnd.get_wallet_balance()
+            if len(candidates) > 0:
+                if events_1d < events_1d_low and fee_adjust > 0.1:
+                    fee_adjust_indicator = format_alias_red(" ⬇️")
+                elif events_1d > events_1d_high and fee_adjust < 1.5:
+                    fee_adjust_indicator = format_alias_green(" ⬆️")
+                print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC" +  " | " + format_boring_string("adjust: ") + str(fee_adjust) + fee_adjust_indicator)
+                #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC"):.3f
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
@@ -655,7 +687,7 @@ def get_fee_adjusted(_ratio, _level):
         new_fee = 0;
     if _ratio > coeff1:
         new_fee = 0;
-    return new_fee
+    return new_fee * fee_adjust
 
 
 success = main()

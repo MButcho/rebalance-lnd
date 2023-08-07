@@ -170,7 +170,7 @@ class Lnd:
             chan_point = channel_point,
             base_fee_msat = 0,
             fee_rate = fee_rate_msat/1000000,
-            time_lock_delta = 40,            
+            time_lock_delta = 100,            
         )
         
         response = self.stub.UpdateChannelPolicy(request)
