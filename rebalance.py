@@ -18,10 +18,12 @@ from output import Output, format_alias, format_alias_red, format_ppm, format_am
 # define routers, rest fee adjustment is manual
 routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
 routers = routers_file.read().split('\n')
-routers_fee_min = 0
-routers_fee_max = 99
-routers_fee_ratio = 0.5 # fee increase with ratio dropping
-events_target = 100 # target events per node / 24 hours
+#routers_fee_min = 0
+#routers_fee_max = 99
+#routers_fee_ratio = 0.5 # fee increase with ratio dropping
+#events_target = 100 # target events per node / 24 hours
+event_target_high = 50
+event_target_medium = 25
 
 class Rebalance:
     def __init__(self, arguments):
@@ -215,12 +217,13 @@ class Rebalance:
                 alias_formatted = format_alias_red(alias)
                 inactive += 1
             ratio_formatted = get_local_ratio(candidate)
-            if ratio_formatted < 0.25 or ratio_formatted > 0.75:
-                rebalance_value = "Yes"
-            else:
-                rebalance_value = " No"
+            #if ratio_formatted < 0.25 or ratio_formatted > 0.75:
+            #    rebalance_value = "Yes"
+            #else:
+            #    rebalance_value = " No"
+            
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
-            own_ppm_formatted = format_amount_white(own_ppm, 4)
+            own_ppm_formatted = format_amount_white(own_ppm, 5)
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
             remote_ppm_formatted = format_amount_white(remote_ppm, 5)
             update_fee = False
@@ -238,10 +241,10 @@ class Rebalance:
             else:
                 is_router = False
             
-            if ratio_formatted < routers_fee_ratio:
-                fee_level = round(routers_fee_max*(ratio_formatted-routers_fee_ratio)/(0-routers_fee_ratio))
-            else:
-                fee_level = 0
+            #if ratio_formatted < routers_fee_ratio:
+            #    fee_level = round(routers_fee_max*(ratio_formatted-routers_fee_ratio)/(0-routers_fee_ratio))
+            #else:
+            #    fee_level = 0
             
             time = datetime.now()
             _to = int(round(time.timestamp()))
@@ -254,7 +257,15 @@ class Rebalance:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
             events_count_formatted = format_amount_white(events_count, 4)
-            fee_adjusted = round((events_count/events_target)*fee_level)
+            
+            if events_count > event_target_high:
+                fee_level = "high";
+            elif events_count > event_target_medium:
+                fee_level = "medium";
+            else:
+                fee_level = "low";
+            #fee_adjusted = round((events_count/events_target)*fee_level)
+            fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
             if own_ppm != fee_adjusted and is_router:
                 update_fee = True
@@ -269,7 +280,7 @@ class Rebalance:
                     update_policy = self.lnd.update_channel_policy(fee_adjusted, candidate.channel_point)
                     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
             else:       
-                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {ratio_formatted:.3f} | {ratio} | {events_count_formatted} | {alias_formatted}")
+                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
         
         if self.arguments.update == False:
              wallet_balance = self.lnd.get_wallet_balance()
@@ -605,7 +616,7 @@ def get_remote_available(channel):
 def get_local_ratio(channel):
     remote = channel.remote_balance
     local = channel.local_balance
-    return float(local) / (remote + local)
+    return (float(local) / (remote + local)) * 100
 
 
 def get_capacity_and_ratio_bar(candidate, max_channel_capacity):
@@ -627,6 +638,24 @@ def get_columns():
         return int(os.popen("stty size", "r").read().split()[1])
     else:
         return 80
+
+
+def get_fee_adjusted(_ratio, _level):
+    if _level == "low":
+        coeff1 = 49
+        coeff2 = 5.5        
+    elif _level == "medium":
+        coeff1 = 75
+        coeff2 = 14.1        
+    else:
+        coeff1 = 99
+        coeff2 = 20
+    new_fee = ((coeff1 - _ratio) ** 2 ) / coeff2
+    if new_fee < 0:
+        new_fee = 0;
+    if _ratio > coeff1:
+        new_fee = 0;
+    return new_fee
 
 
 success = main()
