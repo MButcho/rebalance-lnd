@@ -216,6 +216,9 @@ class Rebalance:
         local_balance = 0
         pending_amount = 0
         inactive = 0
+        if self.arguments.update == False:
+            print(format_boring_string("Channel ID         |     Inbound |    Outbound |   Own |   Rem | Rat. | Adjust |  24h | Alias"))
+        
         for candidate in candidates:
             id_formatted = format_channel_id(candidate.chan_id)
             active = bool(candidate.active)
@@ -260,15 +263,20 @@ class Rebalance:
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
+            _from_6h = int(round((time - timedelta(hours=4)).timestamp()))
             _from_7d = int(round((time - timedelta(days=7)).timestamp()))
             events_response = self.lnd.get_events(_from, _to)
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
+            events_count_6h = 0
             amount = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
                     amount += event.amt_in
+                    if event.timestamp > _from_6h:
+                        #print(datetime.fromtimestamp(event.timestamp))
+                        events_count_6h += 1
             events_count_formatted = format_amount_white(events_count, 4)
             amount_formatted = amount/(10**8)
             
@@ -279,11 +287,18 @@ class Rebalance:
             else:
                 fee_level = "low";
             #fee_adjusted = round((events_count/events_target)*fee_level)
-            fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
+            indicator = ""
+            if is_router and events_count_6h == 0:
+                fee_adjusted = round(own_ppm / 2)
+                indicator = format_alias_red("⬇️")
+            elif is_router and events_count_6h < 5:
+                fee_adjusted = round(own_ppm)
+            else:
+                fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
-            if own_ppm != fee_adjusted and is_router:
+            if is_router and own_ppm != fee_adjusted:
                 update_fee = True
-                ratio = f"👉 {fee_adjusted}".ljust(5)
+                ratio = f"👉 {fee_adjusted}{indicator}".ljust(7)
             elif is_router:
                 ratio = "------"
             else:
