@@ -11,8 +11,8 @@ from yachalk import chalk
 
 from lnd import Lnd
 from logic import Logic
-from output import Output, format_alias, format_alias_red, format_alias_green, format_ppm, format_amount, format_amount_green, format_amount_white, format_boring_string, \
-    print_bar, format_channel_id, format_error, format_boring_string, format_amount_red
+from output import Output, format_alias, format_alias_red, format_alias_green, format_ppm, format_amount, format_amount_green, format_amount_white, format_amount_white_s, \
+    format_boring_string, print_bar, format_channel_id, format_error, format_boring_string, format_amount_red
 
 
 # define routers, fee adjustment
@@ -217,7 +217,7 @@ class Rebalance:
         pending_amount = 0
         inactive = 0
         if self.arguments.update == False:
-            print(format_boring_string("Channel ID         |     Inbound |    Outbound |   Own |   Rem | Rat. | Adjust |  24h | Alias"))
+            print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
         
         for candidate in candidates:
             id_formatted = format_channel_id(candidate.chan_id)
@@ -237,9 +237,9 @@ class Rebalance:
             #    rebalance_value = " No"
             
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
-            own_ppm_formatted = format_amount_white(own_ppm, 5)
+            own_ppm_formatted = format_amount_white_s(own_ppm, 4)
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
-            remote_ppm_formatted = format_amount_white(remote_ppm, 5)
+            remote_ppm_formatted = format_amount_white_s(remote_ppm, 4)
             update_fee = False
             if candidate.initiator:
                 commit_fee += int(candidate.commit_fee)
@@ -263,20 +263,20 @@ class Rebalance:
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
-            _from_6h = int(round((time - timedelta(hours=4)).timestamp()))
+            _from_8h = int(round((time - timedelta(hours=8)).timestamp()))
             _from_7d = int(round((time - timedelta(days=7)).timestamp()))
             events_response = self.lnd.get_events(_from, _to)
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
-            events_count_6h = 0
+            events_count_8h = 0
             amount = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
                     amount += event.amt_in
-                    if event.timestamp > _from_6h:
+                    if event.timestamp > _from_8h:
                         #print(datetime.fromtimestamp(event.timestamp))
-                        events_count_6h += 1
+                        events_count_8h += 1
             events_count_formatted = format_amount_white(events_count, 4)
             amount_formatted = amount/(10**8)
             
@@ -287,20 +287,20 @@ class Rebalance:
             else:
                 fee_level = "low";
             #fee_adjusted = round((events_count/events_target)*fee_level)
-            indicator = ""
-            if is_router and events_count_6h == 0:
+            indicator = " "
+            if is_router and events_count_8h == 0:
                 fee_adjusted = round(own_ppm / 2)
                 indicator = format_alias_red("⬇️")
-            elif is_router and events_count_6h < 5:
+            elif is_router and events_count_8h < 5:
                 fee_adjusted = round(own_ppm)
             else:
                 fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
             if is_router and own_ppm != fee_adjusted:
                 update_fee = True
-                ratio = f"👉 {fee_adjusted}{indicator}".ljust(7)
+                ratio = "👉" + f'{fee_adjusted:>3}' + indicator
             elif is_router:
-                ratio = "------"
+                ratio = "------"                
             else:
                 ratio = "Manual"
             

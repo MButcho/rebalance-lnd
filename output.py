@@ -106,6 +106,9 @@ def format_amount_red(amount, min_width=None):
     
 def format_amount_white(amount, min_width=None):
     return chalk.white(f"{amount:{min_width},}")
+    
+def format_amount_white_s(amount, min_width=None):
+    return chalk.white(f"{amount:{min_width}}")
 
 def format_boring_string(string):
     return chalk.bg_black(chalk.gray(string))
