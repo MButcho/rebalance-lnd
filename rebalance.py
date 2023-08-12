@@ -26,6 +26,7 @@ events_target_high = 50
 events_target_medium = 25
 events_1d_high = 200
 events_1d_low = 100
+events_node_hours = 8
 fee_adjust_file_path = os.path.dirname(sys.argv[0])+'/fee_adjust.conf'
 if os.path.isfile(fee_adjust_file_path) and os.stat(fee_adjust_file_path).st_size > 0: # if empty file
     fee_adjust_file = open(fee_adjust_file_path, 'r')
@@ -263,20 +264,20 @@ class Rebalance:
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
-            _from_8h = int(round((time - timedelta(hours=8)).timestamp()))
+            _from_h = int(round((time - timedelta(hours=events_node_hours)).timestamp()))
             _from_7d = int(round((time - timedelta(days=7)).timestamp()))
             events_response = self.lnd.get_events(_from, _to)
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
-            events_count_8h = 0
+            events_count_h = 0
             amount = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
                     amount += event.amt_in
-                    if event.timestamp > _from_8h:
+                    if event.timestamp > _from_h:
                         #print(datetime.fromtimestamp(event.timestamp))
-                        events_count_8h += 1
+                        events_count_h += 1
             events_count_formatted = format_amount_white(events_count, 4)
             amount_formatted = amount/(10**8)
             
@@ -288,10 +289,14 @@ class Rebalance:
                 fee_level = "low";
             #fee_adjusted = round((events_count/events_target)*fee_level)
             indicator = " "
-            if is_router and events_count_8h == 0:
-                fee_adjusted = round(own_ppm / 2)
+            
+            if is_router and events_count_h == 0:
+                if (time.hour % (events_node_hours / 2) == 0):
+                    fee_adjusted = round(own_ppm / 2)
+                else:
+                    fee_adjusted = round(own_ppm)
                 indicator = format_alias_red("⬇️")
-            elif is_router and events_count_8h < 5:
+            elif is_router and events_count_h < 5:
                 fee_adjusted = round(own_ppm)
             else:
                 fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
