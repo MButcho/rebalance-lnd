@@ -18,6 +18,11 @@ from output import Output, format_alias, format_alias_red, format_alias_green, f
 # define routers, fee adjustment
 routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
 routers = routers_file.read().split('\n')
+vampires_file = open(os.path.dirname(sys.argv[0])+'/vampires.conf', 'r')
+vampires = vampires_file.read().split('\n')
+bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
+bos_arr = []
+vamp_arr = []
 #routers_fee_min = 0
 #routers_fee_max = 99
 #routers_fee_ratio = 0.5 # fee increase with ratio dropping
@@ -218,7 +223,7 @@ class Rebalance:
         pending_amount = 0
         inactive = 0
         if self.arguments.update == False:
-            print(format_boring_string("Channel ID         |     Inbound |    Outbound |   Own |   Rem | Rat. | Adjust |  24h | Alias"))
+            print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
         
         for candidate in candidates:
             id_formatted = format_channel_id(candidate.chan_id)
@@ -232,10 +237,6 @@ class Rebalance:
                 alias_formatted = format_alias_red(alias)
                 inactive += 1
             ratio_formatted = get_local_ratio(candidate)
-            #if ratio_formatted < 0.25 or ratio_formatted > 0.75:
-            #    rebalance_value = "Yes"
-            #else:
-            #    rebalance_value = " No"
             
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
             own_ppm_formatted = format_amount_white_s(own_ppm, 4)
@@ -255,11 +256,6 @@ class Rebalance:
                 is_router = True
             else:
                 is_router = False
-            
-            #if ratio_formatted < routers_fee_ratio:
-            #    fee_level = round(routers_fee_max*(ratio_formatted-routers_fee_ratio)/(0-routers_fee_ratio))
-            #else:
-            #    fee_level = 0
             
             time = datetime.now()
             _to = int(round(time.timestamp()))
@@ -292,7 +288,7 @@ class Rebalance:
             if fee_adjustment:
                 if is_router and events_count_8h == 0:
                     fee_adjusted = round(own_ppm / 1) # disable fee adjustment /2, keep just indicator
-                    indicator = format_alias_red("⬇️")
+                    indicator = format_alias_red("▼")
                 elif is_router and events_count_8h < 5:
                     fee_adjusted = round(own_ppm)
                 else:
@@ -300,11 +296,28 @@ class Rebalance:
             else:
                 fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
+            # create vampire arr
+            if alias in vampires:
+                is_vampire = True
+                if ratio_formatted < 75:
+                    if alias not in vamp_arr:
+                        vamp_arr.append(alias)
+                        bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")                        
+            else:
+                is_vampire = False
+            
+            # fee adjustment label
             if is_router and own_ppm != fee_adjusted:
                 update_fee = True
-                ratio = "👉" + f'{fee_adjusted:>3}' + indicator
+                if own_ppm > fee_adjusted:
+                    fee_indicator = format_alias_green("▼")
+                else:
+                    fee_indicator = format_alias_red("▲")
+                ratio = fee_indicator + f'{fee_adjusted:>4}' + indicator
             elif is_router:
-                ratio = "------"                
+                ratio = "------"
+            elif is_vampire:
+                ratio = "Vampir"
             else:
                 ratio = "Manual"
             
@@ -315,7 +328,9 @@ class Rebalance:
             else:
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
                 #print(amount_formatted)
-        
+                
+            
+                
         events_1d = events_response.last_offset_index
         fee_adjust_indicator = " -"
         # running each 1 hour, fee adjustment 
@@ -340,6 +355,11 @@ class Rebalance:
                     fee_adjust_indicator = " (D)"
                 print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC" +  " | " + format_boring_string("Adjust: ") + str(fee_adjust) + fee_adjust_indicator)
                 #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC"):.3f
+                
+        # write unique lines reverse
+        bos_file = open(bos_file_path, 'w')
+        bos_file.writelines(bos_arr[::-1])
+        bos_file.close()
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
