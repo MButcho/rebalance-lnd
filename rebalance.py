@@ -26,7 +26,6 @@ if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
     nodes_file.close()
     for _node in nodes_arr:
         _node_arr = _node.split(';')
-        #print(len(_node_arr))
         if len(_node_arr) == 2:
             if _node_arr[1] == "router":
                 routers.append(_node_arr[0])
@@ -34,24 +33,12 @@ if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
                 vampires.append(_node_arr[0])
             if _node_arr[1] == "source":
                 sources.append(_node_arr[0])
-        #else:
-        #    sys.exit("nodes.conf is not in correct format: node alias;(router/vampire/source)")
 else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
-#routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
-#routers = routers_file.read().split('\n')
-#vampires_file = open(os.path.dirname(sys.argv[0])+'/vampires.conf', 'r')
-#vampires = vampires_file.read().split('\n')
-#sources_file = open(os.path.dirname(sys.argv[0])+'/sources.conf', 'r')
-#sources = sources_file.read().split('\n')
 bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
 bos_arr = []
 vamp_arr = []
-#routers_fee_min = 0
-#routers_fee_max = 99
-#routers_fee_ratio = 0.5 # fee increase with ratio dropping
-#events_target = 100 # target events per node / 24 hours
 events_target_high = 50
 events_target_medium = 25
 events_1d_high = 200
