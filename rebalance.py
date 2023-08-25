@@ -15,11 +15,36 @@ from output import Output, format_alias, format_alias_red, format_alias_green, f
     format_boring_string, print_bar, format_channel_id, format_error, format_boring_string, format_amount_red
 
 
-# define routers, fee adjustment
-routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
-routers = routers_file.read().split('\n')
-vampires_file = open(os.path.dirname(sys.argv[0])+'/vampires.conf', 'r')
-vampires = vampires_file.read().split('\n')
+# define nodes, fee adjustment, ...
+routers = []
+vampires = []
+sources = []
+node_file_path = os.path.dirname(sys.argv[0])+'/nodes.conf'
+if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
+    nodes_file = open(node_file_path, 'r')
+    nodes_arr = nodes_file.read().split('\n')
+    nodes_file.close()
+    for _node in nodes_arr:
+        _node_arr = _node.split(';')
+        #print(len(_node_arr))
+        if len(_node_arr) == 2:
+            if _node_arr[1] == "router":
+                routers.append(_node_arr[0])
+            if _node_arr[1] == "vampire":
+                vampires.append(_node_arr[0])
+            if _node_arr[1] == "source":
+                sources.append(_node_arr[0])
+        #else:
+        #    sys.exit("nodes.conf is not in correct format: node alias;(router/vampire/source)")
+else:
+    sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
+
+#routers_file = open(os.path.dirname(sys.argv[0])+'/routers.conf', 'r')
+#routers = routers_file.read().split('\n')
+#vampires_file = open(os.path.dirname(sys.argv[0])+'/vampires.conf', 'r')
+#vampires = vampires_file.read().split('\n')
+#sources_file = open(os.path.dirname(sys.argv[0])+'/sources.conf', 'r')
+#sources = sources_file.read().split('\n')
 bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
 bos_arr = []
 vamp_arr = []
@@ -256,6 +281,11 @@ class Rebalance:
                 is_router = True
             else:
                 is_router = False
+                
+            if alias in sources:
+                is_source = True
+            else:
+                is_source = False
             
             time = datetime.now()
             _to = int(round(time.timestamp()))
@@ -318,6 +348,8 @@ class Rebalance:
                 ratio = "------"
             elif is_vampire:
                 ratio = "Vampir"
+            elif is_source:
+                ratio = "Source"
             else:
                 ratio = "Manual"
             
