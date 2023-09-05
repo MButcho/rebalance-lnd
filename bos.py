@@ -13,12 +13,9 @@ bos_file = open(bos_file_path, 'r')
 vampires_l = bos_file.read().split('\n')
 vampires = [x for x in vampires_l if x != '']
 logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
-cron = 120 # running every 120 min
-#minutes = 15
-minutes = round(cron / len(vampires)) - 1
-#minutes = round(((cron - len(vampires)) / len(vampires)) - 1)
+max_time = 150 # max script run time
+minutes = round(max_time / len(vampires)) - 1
 logging.info("Rebalancing started")
-#minutes = 1
 
 for str_line in vampires:
     if str_line != "":

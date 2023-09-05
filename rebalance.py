@@ -37,6 +37,7 @@ else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
 bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
+fee_lowest = 1
 bos_arr = []
 vamp_arr = []
 events_target_high = 50
@@ -743,10 +744,10 @@ def get_fee_adjusted(_ratio, _level):
         coeff1 = 99
         coeff2 = 20
     new_fee = ((coeff1 - _ratio) ** 2 ) / coeff2
-    if new_fee < 0:
-        new_fee = 0;
+    if new_fee < fee_lowest:
+        new_fee = fee_lowest;
     if _ratio > coeff1:
-        new_fee = 0;
+        new_fee = fee_lowest;
     return new_fee * fee_adjust
 
 
