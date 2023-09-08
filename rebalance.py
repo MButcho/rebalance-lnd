@@ -16,8 +16,10 @@ from output import Output, format_alias, format_alias_red, format_alias_green, f
 
 
 # define nodes, fee adjustment, ...
+daily_update = 22 # hour must be 22 on hourly update
 routers = []
 vampires = []
+vampire_fees = []
 sources = []
 node_file_path = os.path.dirname(sys.argv[0])+'/nodes.conf'
 if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
@@ -26,19 +28,25 @@ if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
     nodes_file.close()
     for _node in nodes_arr:
         _node_arr = _node.split(';')
-        if len(_node_arr) == 2:
-            if _node_arr[1] == "router":
-                routers.append(_node_arr[0])
-            if _node_arr[1] == "vampire":
-                vampires.append(_node_arr[0])
-            if _node_arr[1] == "source":
-                sources.append(_node_arr[0])
+        if _node_arr[0][0:1] != "#":
+            if len(_node_arr) == 2 or len(_node_arr) == 4:
+                if _node_arr[1] == "router":
+                    routers.append(_node_arr[0])
+                if _node_arr[1] == "vampire":
+                    vampires.append(_node_arr[0])
+                    if len(_node_arr) == 4:
+                        vampire_fees.append(_node_arr[0] + ";" + _node_arr[2] + ";" + _node_arr[3])
+                    else:
+                        sys.exit("Please edit nodes.conf and add 4 arguments for vampire " + _node_arr[0])
+                if _node_arr[1] == "source":
+                    sources.append(_node_arr[0])
 else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
 bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
 fee_lowest = 1
 bos_arr = []
+fee_arr = []
 vamp_arr = []
 events_target_high = 50
 events_target_medium = 25
@@ -302,7 +310,7 @@ class Rebalance:
             else:
                 fee_level = "low";
             #fee_adjusted = round((events_count/events_target)*fee_level)
-            indicator = " "
+            indicator = ""
             if fee_adjustment:
                 if is_router and events_count_8h == 0:
                     fee_adjusted = round(own_ppm / 1) # disable fee adjustment /2, keep just indicator
@@ -317,10 +325,42 @@ class Rebalance:
             # create vampire arr
             if alias in vampires:
                 is_vampire = True
+                for _vampire_fee_item in vampire_fees:
+                    _vampire_fee_arr = _vampire_fee_item.split(';')
+                    if _vampire_fee_arr[0] == alias:
+                       min_ppm = int(_vampire_fee_arr[1])
+                       max_ppm = int(_vampire_fee_arr[2])
+                       #print(alias + ", min: " + str(min_ppm) + ", max: " + str(max_ppm))
+                
                 if ratio_formatted < 75:
+                    if events_count == 0 and ratio_formatted < 5:
+                        if (own_ppm*1.02) < max_ppm:
+                            fee_adjusted = round(own_ppm*1.02)
+                        else:
+                            fee_adjusted = max_ppm
+                    elif events_count == 0 and ratio_formatted > 50:
+                        if (own_ppm*0.98) > min_ppm:
+                            fee_adjusted = round(own_ppm*0.98)
+                        else:
+                            fee_adjusted = min_ppm
+                    else:
+                        fee_adjusted = own_ppm
+                    
                     if alias not in vamp_arr:
                         vamp_arr.append(alias)
-                        bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")                        
+                        fee_arr.append(alias + ";" + str(fee_adjusted))
+                        if self.arguments.vampire:
+                            bos_arr.append(alias + ";" + str(fee_adjusted) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
+                        else:
+                            bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
+                    else:
+                        for _fee_item in fee_arr:
+                            _fee_item_arr = _fee_item.split(';')
+                            if _fee_item_arr[0] == alias:
+                               fee_adjusted = int(_fee_item_arr[1])
+                        
+                    if own_ppm != fee_adjusted and self.arguments.vampire:
+                        update_fee = True
             else:
                 is_vampire = False
             
@@ -331,11 +371,18 @@ class Rebalance:
                     fee_indicator = format_alias_green("▼")
                 else:
                     fee_indicator = format_alias_red("▲")
-                ratio = fee_indicator + f'{fee_adjusted:>4}' + indicator
+                ratio = fee_indicator + f'{fee_adjusted:>5}' + indicator
             elif is_router:
                 ratio = "------"
             elif is_vampire:
-                ratio = "Vampir"
+                if own_ppm != fee_adjusted:
+                    if own_ppm > fee_adjusted:
+                        fee_indicator = format_alias_green("▼")
+                    else:
+                        fee_indicator = format_alias_red("▲")
+                    ratio = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                else:
+                    ratio = "Vampir"
             elif is_source:
                 ratio = "Source"
             else:
@@ -354,7 +401,7 @@ class Rebalance:
         events_1d = events_response.last_offset_index
         fee_adjust_indicator = " -"
         # running each 1 hour, fee adjustment 
-        if self.arguments.update and time.hour == 22 and fee_adjustment:
+        if self.arguments.update and time.hour == daily_update and fee_adjustment:
             if events_1d < events_1d_low and fee_adjust > 0.1:
                 fee_adjust_file = open(fee_adjust_file_path, 'w')
                 fee_adjust_file.write(str(round(fee_adjust-0.1, 1)))
@@ -535,6 +582,12 @@ def get_argument_parser():
         "--update",
         action='store_true', 
         help="Update fees in conjunction with --compact",
+    )
+    parser.add_argument(
+        "-v",
+        "--vampire",
+        action='store_true', 
+        help="Update fees in conjunction with --compact and --update on vampire nodes",
     )
     list_group = parser.add_argument_group(
         "list candidates", "Show the unbalanced channels."
