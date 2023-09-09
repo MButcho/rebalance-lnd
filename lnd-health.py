@@ -23,13 +23,17 @@ min_blocks_to_expire = 50000
 min_alias = ""
 for channel in result['channels']:
     alias = channel['peer_alias']
+    active = channel['active']
     for pending_htlc in channel['pending_htlcs']:
         expiration_height = pending_htlc['expiration_height']
         blocks_to_expire = expiration_height - current_height
         if blocks_to_expire < min_blocks_to_expire:
-            min_blocks_to_expire = blocks_to_expire
-            min_alias = alias
-        print(alias + " - Expire: " + str(pending_htlc['expiration_height']) + " (" + str(blocks_to_expire) + ")")
+            if active:
+                min_blocks_to_expire = blocks_to_expire
+                min_alias = alias
+            
+                
+        print(alias + " - expire: " + str(pending_htlc['expiration_height']) + " (" + str(blocks_to_expire) + "), active: " + str(active))
         i+=1
 
 if i == 0:

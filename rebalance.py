@@ -309,7 +309,6 @@ class Rebalance:
                 fee_level = "medium";
             else:
                 fee_level = "low";
-            #fee_adjusted = round((events_count/events_target)*fee_level)
             indicator = ""
             if fee_adjustment:
                 if is_router and events_count_8h == 0:
@@ -347,12 +346,13 @@ class Rebalance:
                         fee_adjusted = own_ppm
                     
                     if alias not in vamp_arr:
-                        vamp_arr.append(alias)
-                        fee_arr.append(alias + ";" + str(fee_adjusted))
-                        if self.arguments.vampire:
-                            bos_arr.append(alias + ";" + str(fee_adjusted) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
-                        else:
-                            bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
+                        if active:
+                            vamp_arr.append(alias)
+                            fee_arr.append(alias + ";" + str(fee_adjusted))
+                            if self.arguments.vampire:
+                                bos_arr.append(alias + ";" + str(fee_adjusted) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
+                            else:
+                                bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
                     else:
                         for _fee_item in fee_arr:
                             _fee_item_arr = _fee_item.split(';')
@@ -394,13 +394,9 @@ class Rebalance:
                     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
             else:
                 print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
-                #print(amount_formatted)
-                
-            
                 
         events_1d = events_response.last_offset_index
         fee_adjust_indicator = " -"
-        # running each 1 hour, fee adjustment 
         if self.arguments.update and time.hour == daily_update and fee_adjustment:
             if events_1d < events_1d_low and fee_adjust > 0.1:
                 fee_adjust_file = open(fee_adjust_file_path, 'w')
