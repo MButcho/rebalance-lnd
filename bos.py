@@ -10,13 +10,18 @@ from datetime import datetime, timedelta
 pid = os.getpid()
 script_path = os.path.dirname(sys.argv[0])
 bos_file_path = script_path+'/bos.conf'
+logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
+#max_time = 180 # max script run time
+#minutes = round(max_time / len(vampires)) - 1
+minutes = 20
+amount = 2500 * 1000
+
+logging.info("Rebalancing started")
+
 bos_file = open(bos_file_path, 'r')
 vampires_l = bos_file.read().split('\n')
+bos_file.close()
 vampires = [x for x in vampires_l if x != '']
-logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
-max_time = 150 # max script run time
-minutes = round(max_time / len(vampires)) - 1
-logging.info("Rebalancing started")
 
 for str_line in vampires:
     if str_line != "":
@@ -35,8 +40,6 @@ for str_line in vampires:
         target_ppm = round(own_ppm*((100-target_ratio)/100))
         fee_delta = own_ppm - target_ppm
         
-        amount = 2500 * 1000
-        
         start_time = datetime.now()        
         logging.info(alias + " started (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
         command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
@@ -44,7 +47,7 @@ for str_line in vampires:
         end_time = datetime.now()
         delta_min = round((end_time - start_time).total_seconds() / 60)
         logging.info(alias + " finished in " + str(delta_min) + " mins (" + str(result) + ")")
-        time.sleep(5)
+        time.sleep(30)
         #logging.error('some error')
         #logging.debug('some debug')
         
