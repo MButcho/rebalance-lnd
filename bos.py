@@ -6,6 +6,7 @@ import subprocess
 import time
 import sys
 from datetime import datetime, timedelta
+from yachalk import chalk
 
 pid = os.getpid()
 script_path = os.path.dirname(sys.argv[0])
@@ -16,7 +17,7 @@ logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(leve
 minutes = 20
 amount = 2500 * 1000
 
-logging.info("Rebalancing started")
+logging.info("Rebalancing started (" + str(minutes) + " mins)")
 
 bos_file = open(bos_file_path, 'r')
 vampires_l = bos_file.read().split('\n')
@@ -46,7 +47,11 @@ for str_line in vampires:
         result = os.system(command)
         end_time = datetime.now()
         delta_min = round((end_time - start_time).total_seconds() / 60)
-        logging.info(alias + " finished in " + str(delta_min) + " mins (" + str(result) + ")")
+        if delta_min < minutes:
+            formatted_mins = chalk.red(str(delta_min) + " mins")
+        else:
+            formatted_mins = chalk.green(str(delta_min) + " mins")
+        logging.info(alias + " finished in " + formatted_mins + " (" + str(result) + ")")
         time.sleep(30)
         #logging.error('some error')
         #logging.debug('some debug')
