@@ -20,6 +20,7 @@ daily_update = 22 # hour must be 22 on hourly update
 routers = []
 vampires = []
 vampire_fees = []
+vampire_adjust = 0.025
 sources = []
 node_file_path = os.path.dirname(sys.argv[0])+'/nodes.conf'
 if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
@@ -332,14 +333,14 @@ class Rebalance:
                        #print(alias + ", min: " + str(min_ppm) + ", max: " + str(max_ppm))
                 
                 if ratio_formatted < 75:
-                    if events_count == 0 and ratio_formatted < 5:
-                        if (own_ppm*1.02) < max_ppm:
-                            fee_adjusted = round(own_ppm*1.02)
+                    if events_count == 0 and ratio_formatted < 10:
+                        if (own_ppm*(1+vampire_adjust)) < max_ppm:
+                            fee_adjusted = round(own_ppm*(1+vampire_adjust))
                         else:
                             fee_adjusted = max_ppm
                     elif events_count == 0 and ratio_formatted > 50:
-                        if (own_ppm*0.98) > min_ppm:
-                            fee_adjusted = round(own_ppm*0.98)
+                        if (own_ppm*(1-vampire_adjust)) > min_ppm:
+                            fee_adjusted = round(own_ppm*(1-vampire_adjust))
                         else:
                             fee_adjusted = min_ppm
                     else:
