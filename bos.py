@@ -14,8 +14,8 @@ bos_file_path = script_path+'/bos.conf'
 logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
 #max_time = 180 # max script run time
 #minutes = round(max_time / len(vampires)) - 1
-minutes = 20
-amount = 2500 * 1000
+minutes = 25
+amount = 3000 * 1000
 
 logging.info("Rebalancing started (" + str(minutes) + " mins)")
 
