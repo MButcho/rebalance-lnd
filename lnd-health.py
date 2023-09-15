@@ -13,9 +13,9 @@ from output import format_alias_red, format_boring_string, format_amount_red_s
 script_path = os.path.dirname(sys.argv[0])
 logging.basicConfig(filename=script_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
 
-command = "/usr/local/bin/bitcoin-cli getblockchaininfo"
+command = "/usr/local/bin/lncli getinfo"
 result = json.loads(subprocess.check_output(command, shell = True))
-current_height = result['blocks']
+current_height = result['block_height']
 print(format_boring_string("Current Height: ") + str(current_height))
 
 command = "/usr/local/bin/lncli listchannels"
@@ -50,15 +50,18 @@ for channel in result['channels']:
 if i == 0:
     min_blocks_to_expire = 144
 
-zabbix_pending_count = open("/tmp/lnd-pending-count", 'w')
-zabbix_pending_count.write(str(i))
-zabbix_pending_count.close()
+try:
+    zabbix_pending_count = open("/tmp/lnd-pending-count", 'w')
+    zabbix_pending_count.write(str(i))
+    zabbix_pending_count.close()
 
-zabbix_pending_min = open("/tmp/lnd-pending-min", 'w')
-zabbix_pending_min.write(str(min_blocks_to_expire))
-zabbix_pending_min.close()
+    zabbix_pending_min = open("/tmp/lnd-pending-min", 'w')
+    zabbix_pending_min.write(str(min_blocks_to_expire))
+    zabbix_pending_min.close()
 
-logging.info("Pending HTLCs: Total = " + str(i) + ", Min blocks to expire = " + str(min_blocks_to_expire) + " on " + min_alias)
+    logging.info("Pending HTLCs: Total = " + str(i) + ", Min blocks to expire = " + str(min_blocks_to_expire) + " on " + min_alias)
+except:
+    print(" ")
 print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
 
 #print(channels)
