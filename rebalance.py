@@ -244,7 +244,8 @@ class Rebalance:
         local_balance = 0
         pending_amount = 0
         inactive = 0
-        if self.arguments.update == False:
+        tg_channels = ""
+        if self.arguments.update == False and self.arguments.telegram == False:
             print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
         
         for candidate in candidates:
@@ -394,7 +395,11 @@ class Rebalance:
                     update_policy = self.lnd.update_channel_policy(fee_adjusted, candidate.channel_point)
                     print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
             else:
-                print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
+                if self.arguments.telegram:
+                    if active == False:
+                        tg_channels += f"Local: {local_formatted.lstrip()} | Remote: {remote_formatted.lstrip()} | Ratio: {str(round(ratio_formatted)).lstrip()}% | Status: Inactive | {alias_formatted}\n" 
+                else:
+                    print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
                 
         events_1d = events_response.last_offset_index
         fee_adjust_indicator = " -"
@@ -417,8 +422,14 @@ class Rebalance:
                     fee_adjust_indicator = format_alias_green(" ⬆️")                
                 if fee_adjustment == False:
                     fee_adjust_indicator = " (D)"
-                print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC" +  " | " + format_boring_string("Adjust: ") + str(fee_adjust) + fee_adjust_indicator)
+                
+                if self.arguments.telegram == False:                
+                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC" +  " | " + format_boring_string("Adjust: ") + str(fee_adjust) + fee_adjust_indicator)
+                else:
+                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index))
+                    print(tg_channels)
                 #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC"):.3f
+                
                 
         # write unique lines reverse
         bos_file = open(bos_file_path, 'w')
@@ -585,6 +596,12 @@ def get_argument_parser():
         "--vampire",
         action='store_true', 
         help="Update fees in conjunction with --compact and --update on vampire nodes",
+    )
+    parser.add_argument(
+        "-g",
+        "--telegram",
+        action='store_true', 
+        help="Output in Telegram format in conjunction with --compact",
     )
     list_group = parser.add_argument_group(
         "list candidates", "Show the unbalanced channels."
