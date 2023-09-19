@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import subprocess
 import platform
 import random
 import sys
@@ -260,6 +261,13 @@ class Rebalance:
                 is_router = True
             if alias in sources:
                 is_source = True
+                
+            if is_source and self.arguments.update:
+                if ratio_formatted > 50:
+                    command = "bos tags sources --add " + candidate.remote_pubkey
+                else:
+                    command = "bos tags sources --remove " + candidate.remote_pubkey
+                result = subprocess.check_output(command, shell = True)
             
             time = datetime.now()
             _to = int(round(time.timestamp()))
@@ -290,7 +298,7 @@ class Rebalance:
             indicator = ""
             
             fee_adjusted = own_ppm            
-            if is_router:
+            if is_router or is_source:
                 fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
             # create vampire arr
@@ -387,7 +395,7 @@ class Rebalance:
                     is_vampire = True
                 
                 # fee adjustment label
-                if is_router and own_ppm != fee_adjusted:
+                if (is_router or is_source) and own_ppm != fee_adjusted:
                     if own_ppm > fee_adjusted:
                         fee_indicator = format_alias_green("▼")
                     else:
