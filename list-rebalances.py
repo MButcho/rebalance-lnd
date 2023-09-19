@@ -79,17 +79,16 @@ def main():
                 fees+=int(total_fees_msat)/1000
                 value+=int(value_sat)
                 if arguments.list:
-                    print(date + " | " + peer_from + " -> " + peer_to + ", amount: " + str(value_sat) + ", fee: " + str(round(int(total_fees_msat)/1000,3)))
+                    print(format_boring_string(date) + " | " + peer_from + " -> " + peer_to + " | " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " | " + format_boring_string("Fee: ") + str(format_amount_red_s(round(int(total_fees_msat)/1000,3),3)))
 
-    if arguments.list:
-        print("Rebalance in last 7 days: " + str(i) + " | Value: " + str(round(value)) + " | Fees: " + str(round(fees,3)))
+    print(format_boring_string("Rebalances count (" + str(interval) + " days): ") + format_amount_red_s(str(i),0) + " | " + format_boring_string("Value: ") + str(format_amount_green(round(int(value)),0)) + " | " + format_boring_string("Fees: ") + str(format_amount_red_s(round(fees,3),3)))
     
     if arguments.summary:
-        print("Sources:")
+        print(format_boring_string("Sources (from):"))
         summary_from_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_from))).items(), key = lambda x:x[1], reverse = True)
         for _peer, _value in summary_from_sorted:
             print(str(format_amount_red(_value,0)) + " ← " + _peer)
-        print("Vampires:")
+        print(format_boring_string("Vampires (to):"))
         summary_to_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_to))).items(), key = lambda x:x[1], reverse = True)
         for _peer, _value in summary_to_sorted:
             print(str(format_amount_green(_value,0)) + " → " + _peer)

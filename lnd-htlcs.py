@@ -28,6 +28,7 @@ def main():
     min_blocks_to_expire = 50000
     min_alias = ""
     all_htlcs = ""
+    arr_htlcs = []
     for channel in result['channels']:
         alias = channel['peer_alias']
         active = channel['active']
@@ -39,18 +40,8 @@ def main():
                     min_blocks_to_expire = blocks_to_expire
                     min_alias = alias
             
-            if not active:
-                formatted_active = f'{format_alias_red(str(active)):>5}'
-            else:
-                formatted_active = f'{str(active):>5}'
-                
-            formatted_blocks_to_expire = format_alias_red(f'{str(blocks_to_expire):>4}')
-            
             if len(pending_htlc) > 0:
-                if arguments.telegram:
-                    all_htlcs += "Expire: " + str(pending_htlc['expiration_height']) + " (" + formatted_blocks_to_expire + ") | " + "Active: " + formatted_active + " | " + "Node: " + alias + "\n"                    
-                else:
-                    all_htlcs += format_boring_string("Expire: ") + str(pending_htlc['expiration_height']) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Active: ") + formatted_active + " | " + format_boring_string("Node: ") + alias + "\n"
+                arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire})
                 i+=1
 
     if i == 0:
@@ -69,14 +60,22 @@ def main():
     except:
         print("")
     
-    
     if arguments.telegram:
-        print("Pending HTLCs: " + str(i) + " | " + "Min blocks to expire: " + str(min_blocks_to_expire) + " on " + min_alias)
-        print(all_htlcs)
+        print(str(i) + " pending HTLCs (min. " + str(min_blocks_to_expire) + " on " + min_alias + ")")
+        arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
+        for _htlc in arr_htlcs_sorted:
+            print(str(_htlc["blocks_to_expire"]) + " blocks on " + _htlc["alias"])
         print("Current Height: " + str(current_height))
     else:
         print(format_boring_string("Current Height: ") + str(current_height))
-        print(all_htlcs)
+        arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = True)
+        for _htlc in arr_htlcs_sorted:
+            formatted_blocks_to_expire = format_alias_red(f'{str(_htlc["blocks_to_expire"]):>4}')
+            if not _htlc["active"]:
+                formatted_active = f'{format_alias_red(str(_htlc["active"])):>5}'
+            else:
+                formatted_active = f'{str(_htlc["active"]):>5}'
+            print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Active: ") + formatted_active + " | " + format_boring_string("Node: ") + _htlc['alias'])
         print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
 
 def get_argument_parser():
