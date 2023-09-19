@@ -22,6 +22,7 @@ vampires = []
 vampire_fees = []
 vampire_adjust = 0.025
 sources = []
+channels = []
 node_file_path = os.path.dirname(sys.argv[0])+'/nodes.conf'
 if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
     nodes_file = open(node_file_path, 'r')
@@ -240,56 +241,31 @@ class Rebalance:
             reverse=True
             )
         
-        commit_fee = 0
-        local_balance = 0
-        pending_amount = 0
         inactive = 0
-        tg_channels = ""
-        if self.arguments.update == False and self.arguments.telegram == False:
-            print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
-        
+        channels_t = ""
         for candidate in candidates:
-            id_formatted = format_channel_id(candidate.chan_id)
-            active = bool(candidate.active)
-            local_formatted = format_amount_green(get_local_available(candidate), 11)
-            remote_formatted = format_amount(get_remote_available(candidate), 11)
             alias = self.lnd.get_node_alias(candidate.remote_pubkey)
-            if active:
-                alias_formatted = format_alias(alias)
-            else:
-                alias_formatted = format_alias_red(alias)
+            active = bool(candidate.active)
+            if not active:
                 inactive += 1
             ratio_formatted = get_local_ratio(candidate)
-            
             own_ppm = self.lnd.get_ppm_to(candidate.chan_id)
-            own_ppm_formatted = format_amount_white_s(own_ppm, 4)
             remote_ppm = self.lnd.get_ppm_from(candidate.chan_id)
-            remote_ppm_formatted = format_amount_white_s(remote_ppm, 4)
-            update_fee = False
-            if candidate.initiator:
-                commit_fee += int(candidate.commit_fee)
-            local_balance = local_balance + int(candidate.local_balance)
-            pending_htlcs = candidate.pending_htlcs
             
-            for htlc in pending_htlcs:
-                if htlc.incoming == False:
-                    pending_amount += htlc.amount
+            is_router = False
+            is_source = False
+            is_vampire = False
             
             if alias in routers:
                 is_router = True
-            else:
-                is_router = False
-                
             if alias in sources:
                 is_source = True
-            else:
-                is_source = False
             
             time = datetime.now()
             _to = int(round(time.timestamp()))
             _from = int(round((time - timedelta(days=1)).timestamp()))
-            _from_8h = int(round((time - timedelta(hours=8)).timestamp()))
             _from_7d = int(round((time - timedelta(days=7)).timestamp()))
+            _from_8h = int(round((time - timedelta(hours=8)).timestamp()))
             events_response = self.lnd.get_events(_from, _to)
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
@@ -312,20 +288,15 @@ class Rebalance:
             else:
                 fee_level = "low";
             indicator = ""
-            if fee_adjustment:
-                if is_router and events_count_8h == 0:
-                    fee_adjusted = round(own_ppm / 1) # disable fee adjustment /2, keep just indicator
-                    indicator = format_alias_red("▼")
-                elif is_router and events_count_8h < 5:
-                    fee_adjusted = round(own_ppm)
-                else:
-                    fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
-            else:
+            
+            fee_adjusted = own_ppm            
+            if is_router:
                 fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
             
             # create vampire arr
             if alias in vampires:
                 is_vampire = True
+                        
                 for _vampire_fee_item in vampire_fees:
                     _vampire_fee_arr = _vampire_fee_item.split(';')
                     if _vampire_fee_arr[0] == alias:
@@ -334,6 +305,11 @@ class Rebalance:
                        #print(alias + ", min: " + str(min_ppm) + ", max: " + str(max_ppm))
                 
                 if ratio_formatted < 75:
+                    vamp_exists = False
+                    for _channel in channels:
+                        if _channel["alias"] == alias:
+                            vamp_exists = True                            
+                    
                     if events_count == 0 and ratio_formatted < 10:
                         if (own_ppm*(1+vampire_adjust)) < max_ppm:
                             fee_adjusted = round(own_ppm*(1+vampire_adjust))
@@ -347,94 +323,147 @@ class Rebalance:
                     else:
                         fee_adjusted = own_ppm
                     
-                    if alias not in vamp_arr:
-                        if active:
-                            vamp_arr.append(alias)
-                            fee_arr.append(alias + ";" + str(fee_adjusted))
-                            if self.arguments.vampire:
-                                bos_arr.append(alias + ";" + str(fee_adjusted) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
-                            else:
-                                bos_arr.append(alias + ";" + str(own_ppm) + ";" + str(ratio_formatted) + ";" + str(events_count) + "\n")
-                    else:
-                        for _fee_item in fee_arr:
-                            _fee_item_arr = _fee_item.split(';')
-                            if _fee_item_arr[0] == alias:
-                               fee_adjusted = int(_fee_item_arr[1])
-                        
-                    if own_ppm != fee_adjusted and self.arguments.vampire:
-                        update_fee = True
-            else:
-                is_vampire = False
+                    if vamp_exists:
+                        v = 0
+                        for _channel in channels:
+                            if _channel["alias"] == alias:
+                                _fee_adjusted = _channel["fee_adjusted"]
+                                if _channel["events_count"] < events_count:
+                                    if fee_adjusted < _fee_adjusted:
+                                        channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted}
+                            v+=1
             
-            # fee adjustment label
-            if is_router and own_ppm != fee_adjusted:
-                update_fee = True
-                if own_ppm > fee_adjusted:
-                    fee_indicator = format_alias_green("▼")
+            channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted})            
+                
+        #events_1d = events_response.last_offset_index
+        #fee_adjust_indicator = " -"
+        #if self.arguments.update and time.hour == daily_update and fee_adjustment:
+        #    if events_1d < events_1d_low and fee_adjust > 0.1:
+        #        fee_adjust_file = open(fee_adjust_file_path, 'w')
+        #        fee_adjust_file.write(str(round(fee_adjust-0.1, 1)))
+        #        fee_adjust_file.close()                
+        #    elif events_1d > events_1d_high and fee_adjust < 1.5:
+        #        fee_adjust_file = open(fee_adjust_file_path, 'w')
+        #        fee_adjust_file.write(str(round(fee_adjust+0.1, 1)))
+        #        fee_adjust_file.close()                
+        
+        if len(candidates) > 0:
+            #if events_1d < events_1d_low and fee_adjust > 0.1:
+            #    fee_adjust_indicator = format_alias_red(" ⬇️")
+            #elif events_1d > events_1d_high and fee_adjust < 1.5:
+            #    fee_adjust_indicator = format_alias_green(" ⬆️")                
+            if fee_adjustment == False:
+                fee_adjust_indicator = " (D)"
+            
+            if self.arguments.telegram == False and self.arguments.update == False:
+                print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
+            
+            for _channel in channels:                    
+                alias = _channel["alias"]
+                id_formatted = format_channel_id(_channel["chan_id"])
+                channel_point = _channel["channel_point"]
+                local_formatted = format_amount_green(_channel["local"], 11)
+                remote_formatted = format_amount(_channel["remote"], 11)
+                if _channel["active"]:
+                    alias_formatted = format_alias(_channel["alias"])
                 else:
-                    fee_indicator = format_alias_red("▲")
-                ratio = fee_indicator + f'{fee_adjusted:>5}' + indicator
-            elif is_router:
-                ratio = "------"
-            elif is_vampire:
-                if own_ppm != fee_adjusted:
+                    alias_formatted = format_alias_red(_channel["alias"])
+                own_ppm = int(_channel["own_ppm"])
+                own_ppm_formatted = format_amount_white_s(_channel["own_ppm"], 4)   
+                remote_ppm_formatted = format_amount_white_s(_channel["remote_ppm"], 4)
+                ratio_formatted = _channel["ratio"]
+                events_count_formatted = format_amount_white(_channel["events_count"], 4)
+                fee_adjusted = int(_channel["fee_adjusted"])
+                
+                is_router = False
+                is_source = False
+                is_vampire = False
+                
+                if alias in routers:
+                    is_router = True                        
+                if alias in sources:
+                    is_source = True
+                if alias in vampires:
+                    is_vampire = True
+                
+                # fee adjustment label
+                if is_router and own_ppm != fee_adjusted:
                     if own_ppm > fee_adjusted:
                         fee_indicator = format_alias_green("▼")
                     else:
                         fee_indicator = format_alias_red("▲")
-                    ratio = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                    adjust = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                elif is_router:
+                    adjust = "------"
+                elif is_vampire:
+                    if own_ppm != fee_adjusted:
+                        if own_ppm > fee_adjusted:
+                            fee_indicator = format_alias_green("▼")
+                        else:
+                            fee_indicator = format_alias_red("▲")
+                        adjust = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                    else:
+                        adjust = "Vampir"
+                elif is_source:
+                    adjust = "Source"
                 else:
-                    ratio = "Vampir"
-            elif is_source:
-                ratio = "Source"
-            else:
-                ratio = "Manual"
+                    adjust = "Manual"                        
+                
+                if self.arguments.update:
+                    if own_ppm != fee_adjusted and (is_vampire == False or self.arguments.vampire):
+                        update_policy = self.lnd.update_channel_policy(fee_adjusted, channel_point)
+                        print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
+                else:
+                    if self.arguments.telegram:
+                        if _channel["active"] == False:
+                            channels_t += "Local:" +  local_formatted + " | Remote: " + remote_formatted + " | Ratio: " + ratio_formatted + "% | Inactive | " + alias
+                    else:
+                        print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {adjust} | {events_count_formatted} | {alias_formatted}")                        
             
-            if self.arguments.update:
-                if update_fee:
-                    update_policy = self.lnd.update_channel_policy(fee_adjusted, candidate.channel_point)
-                    print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
-            else:
+            if self.arguments.update == False:
                 if self.arguments.telegram:
-                    if active == False:
-                        tg_channels += f"Local: {local_formatted.lstrip()} | Remote: {remote_formatted.lstrip()} | Ratio: {str(round(ratio_formatted)).lstrip()}% | Status: Inactive | {alias_formatted}\n" 
-                else:
-                    print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {ratio} | {events_count_formatted} | {alias_formatted}")
-                
-        events_1d = events_response.last_offset_index
-        fee_adjust_indicator = " -"
-        if self.arguments.update and time.hour == daily_update and fee_adjustment:
-            if events_1d < events_1d_low and fee_adjust > 0.1:
-                fee_adjust_file = open(fee_adjust_file_path, 'w')
-                fee_adjust_file.write(str(round(fee_adjust-0.1, 1)))
-                fee_adjust_file.close()                
-            elif events_1d > events_1d_high and fee_adjust < 1.5:
-                fee_adjust_file = open(fee_adjust_file_path, 'w')
-                fee_adjust_file.write(str(round(fee_adjust+0.1, 1)))
-                fee_adjust_file.close()                
-        
-        if self.arguments.update == False:
-            wallet_balance = self.lnd.get_wallet_balance()
-            if len(candidates) > 0:
-                if events_1d < events_1d_low and fee_adjust > 0.1:
-                    fee_adjust_indicator = format_alias_red(" ⬇️")
-                elif events_1d > events_1d_high and fee_adjust < 1.5:
-                    fee_adjust_indicator = format_alias_green(" ⬆️")                
-                if fee_adjustment == False:
-                    fee_adjust_indicator = " (D)"
-                
-                if self.arguments.telegram == False:                
-                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC" +  " | " + format_boring_string("Adjust: ") + str(fee_adjust) + fee_adjust_indicator)
+                    print("Active/Inactive: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing (24 hours): " + str(events_response.last_offset_index) + " | Routing (7 days): " + str(events_response_7d.last_offset_index))
+                    if len(channels_t) > 0:
+                        print(channels_t)
+                    else:
+                        print("All channels are active")
                 else:
                     print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index))
-                    print(tg_channels)
-                #print(format_boring_string("Wallet: ") + str(wallet_balance) + " | " + format_boring_string("Local: ") + str(local_balance) + " | " + format_boring_string("Commit: ") + str(commit_fee) + " | " + format_boring_string("HTLC: ") + str(pending_amount) + " | " + format_boring_string("Total: ") + str(float(wallet_balance + local_balance + commit_fee + pending_amount)/100000000) + " BTC"):.3f
+
+            # solve vampires and bos
+            bos_file = open(bos_file_path, 'w')
+            for _channel in channels:
+                is_vampire = False
+                if _channel["alias"] in vampires:
+                    is_vampire = True
                 
-                
-        # write unique lines reverse
-        bos_file = open(bos_file_path, 'w')
-        bos_file.writelines(bos_arr[::-1])
-        bos_file.close()
+                if is_vampire:
+                    vamp_exists = False
+                    for _vamp_arr in vamp_arr:
+                        if _vamp_arr["alias"] == _channel["alias"]:
+                            vamp_exists = True
+                                
+                    if not vamp_exists:
+                        if _channel["active"]:
+                            if self.arguments.vampire:
+                                _fee_adjusted = _channel["fee_adjusted"]
+                            else:
+                                _fee_adjusted = _channel["own_ppm"]                                
+                            vamp_arr.append({'alias':_channel["alias"], 'fee_adjusted':_fee_adjusted, 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]})
+                    else:
+                        v = 0
+                        for _vamp_arr in vamp_arr:
+                            if _vamp_arr["alias"] == _channel["alias"]:
+                                if _vamp_arr["events_count"] < _channel["events_count"]:
+                                    vamp_arr[v] = {'alias':_channel["alias"], 'fee_adjusted':_channel["fee_adjusted"], 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]}
+                            v+=1           
+                        
+            
+            for _vamp_arr_item in vamp_arr:
+                bos_arr.append(_vamp_arr_item["alias"] + ";" + str(_vamp_arr_item["fee_adjusted"]) + ";" + str(_vamp_arr_item["ratio"]) + ";" + str(_vamp_arr_item["events_count"]) + "\n")              
+            bos_file.writelines(bos_arr[::-1])
+            bos_file.close()
+        
 
     def start(self):
         if self.arguments.list_candidates and self.arguments.show_only:
