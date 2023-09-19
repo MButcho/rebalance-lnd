@@ -422,7 +422,11 @@ class Rebalance:
             
             if self.arguments.update == False:
                 if self.arguments.telegram:
-                    print("Active/Inactive: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing (24 hours): " + str(events_response.last_offset_index) + " | Routing (7 days): " + str(events_response_7d.last_offset_index))
+                    if inactive == 0:
+                        icon = "🟢 "
+                    else:
+                        icon = "🔴 "
+                    print(icon + "Active/Inactive: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing (24 hours): " + str(events_response.last_offset_index) + " | Routing (7 days): " + str(events_response_7d.last_offset_index))
                     if len(channels_t) > 0:
                         print(channels_t)
                     else:

@@ -61,7 +61,7 @@ def main():
         print("")
     
     if arguments.telegram:
-        print(str(i) + " pending HTLCs (min. " + str(min_blocks_to_expire) + " on " + min_alias + ")")
+        print("💰" + str(i) + " pending HTLCs (min. " + str(min_blocks_to_expire) + " on " + min_alias + ")")
         arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
         for _htlc in arr_htlcs_sorted:
             print(str(_htlc["blocks_to_expire"]) + " blocks on " + _htlc["alias"])

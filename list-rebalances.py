@@ -81,7 +81,7 @@ def main():
                 if arguments.list:
                     print(format_boring_string(date) + " | " + peer_from + " -> " + peer_to + " | " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " | " + format_boring_string("Fee: ") + str(format_amount_red_s(round(int(total_fees_msat)/1000,3),3)))
 
-    print(format_boring_string("Rebalances count (" + str(interval) + " days): ") + format_amount_red_s(str(i),0) + " | " + format_boring_string("Value: ") + str(format_amount_green(round(int(value)),0)) + " | " + format_boring_string("Fees: ") + str(format_amount_red_s(round(fees,3),3)))
+    print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + format_amount_red_s(str(i),0) + " | " + format_boring_string("Value: ") + str(format_amount_green(round(int(value)),0)) + " | " + format_boring_string("Fees: ") + str(format_amount_red_s(round(fees,3),3)))
     
     if arguments.summary:
         print(format_boring_string("Sources (from):"))
