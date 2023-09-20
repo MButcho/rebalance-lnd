@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import argparse
 import os
 import logging
 import subprocess
 import time
 import sys
+import argparse
 from datetime import datetime, timedelta
 import json
 import collections, functools, operator
