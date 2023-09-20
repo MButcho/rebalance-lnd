@@ -336,9 +336,11 @@ class Rebalance:
                         for _channel in channels:
                             if _channel["alias"] == alias:
                                 _fee_adjusted = _channel["fee_adjusted"]
-                                if _channel["events_count"] < events_count:
-                                    if fee_adjusted < _fee_adjusted:
-                                        channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted}
+                                #if _channel["events_count"] < events_count:
+                                if fee_adjusted < _fee_adjusted:
+                                    channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted}
+                                elif fee_adjusted > _fee_adjusted:
+                                    fee_adjusted = _fee_adjusted
                             v+=1
             
             channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted})            
