@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os
+import os, tempfile
 import logging
 import subprocess
 import time
@@ -50,15 +50,27 @@ def main():
                 
                 start_time = datetime.now()        
                 logging.info(alias + " started (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
-                command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
+                
+                temp = tempfile.NamedTemporaryFile()
+                #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
+                command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
                 result = os.system(command)
+                output = temp.read().decode('utf-8')
+                #output_arr = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                #print(source.string)
+                for _output in output_arr:
+                    source_arr = _output.split(" ")
+                    source = source_arr[0]
+                
+                print(source)
                 end_time = datetime.now()
                 delta_min = round((end_time - start_time).total_seconds() / 60)
                 if delta_min < minutes:
                     formatted_mins = chalk.red(str(delta_min) + " mins")
                 else:
                     formatted_mins = chalk.green(str(delta_min) + " mins")
-                logging.info(alias + " finished in " + formatted_mins + " (" + str(result) + ")")
+                logging.info(alias + " from " + source + " finished in " + formatted_mins + " (" + str(result) + ")")
                 time.sleep(30)
                 #logging.error('some error')
                 #logging.debug('some debug')
