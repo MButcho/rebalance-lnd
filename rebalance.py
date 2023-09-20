@@ -378,6 +378,7 @@ class Rebalance:
                     alias_formatted = format_alias_red(_channel["alias"])
                 own_ppm = int(_channel["own_ppm"])
                 own_ppm_formatted = format_amount_white_s(_channel["own_ppm"], 4)   
+                remote_ppm = int(_channel["remote_ppm"])
                 remote_ppm_formatted = format_amount_white_s(_channel["remote_ppm"], 4)
                 ratio_formatted = _channel["ratio"]
                 events_count_formatted = format_amount_white(_channel["events_count"], 4)
@@ -395,6 +396,7 @@ class Rebalance:
                     is_vampire = True
                 
                 # fee adjustment label
+                fee_indicator = ""
                 if (is_router or is_source) and own_ppm != fee_adjusted:
                     if own_ppm > fee_adjusted:
                         fee_indicator = format_alias_green("▼")
@@ -423,8 +425,8 @@ class Rebalance:
                         print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
                 else:
                     if self.arguments.telegram:
-                        if _channel["active"] == False:
-                            channels_t += "Local:" +  local_formatted + " | Remote: " + remote_formatted + " | Ratio: " + ratio_formatted + "% | Inactive | " + alias
+                        #channels_t += alias + ": " + str("{:,}".format(_channel["local"])) + "/" + str("{:,}".format(_channel["remote"])) + "; " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + "; " + str(round(ratio_formatted)) + "%; " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
+                        channels_t += alias + ": " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + ", " + str(round(ratio_formatted)) + "%, " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
                     else:
                         print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {adjust} | {events_count_formatted} | {alias_formatted}")                        
             
@@ -434,7 +436,7 @@ class Rebalance:
                         icon = "🟢 "
                     else:
                         icon = "🔴 "
-                    print(icon + "Active/Inactive: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing (24 hours): " + str(events_response.last_offset_index) + " | Routing (7 days): " + str(events_response_7d.last_offset_index))
+                    print(icon + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing: " + str(events_response.last_offset_index) + " (24 hours) / " + str(events_response_7d.last_offset_index) + " (7 days)")
                     if len(channels_t) > 0:
                         print(channels_t)
                     else:
