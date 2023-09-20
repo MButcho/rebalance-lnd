@@ -62,8 +62,6 @@ def main():
                 for _output in output_arr:
                     source_arr = _output.split(" ")
                     source = source_arr[0]
-                
-                print(source)
                 end_time = datetime.now()
                 delta_min = round((end_time - start_time).total_seconds() / 60)
                 if delta_min < minutes:
