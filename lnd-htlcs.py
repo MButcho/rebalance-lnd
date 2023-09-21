@@ -9,7 +9,7 @@ import sys
 from datetime import datetime, timedelta
 import json
 
-from output import format_alias_red, format_boring_string, format_amount_red_s
+from output import format_alias_red, format_boring_string, format_amount_red_s, format_amount_green
 
 script_path = os.path.dirname(sys.argv[0])
 logging.basicConfig(filename=script_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
@@ -33,6 +33,7 @@ def main():
         alias = channel['peer_alias']
         active = channel['active']
         for pending_htlc in channel['pending_htlcs']:
+            amount = pending_htlc['amount']
             expiration_height = pending_htlc['expiration_height']
             blocks_to_expire = expiration_height - current_height
             if blocks_to_expire < min_blocks_to_expire:
@@ -41,7 +42,7 @@ def main():
                     min_alias = alias
             
             if len(pending_htlc) > 0:
-                arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire})
+                arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire, 'amount': amount})
                 i+=1
 
     if i == 0:
@@ -64,18 +65,23 @@ def main():
         print("💰" + str(i) + " pending HTLCs (min. " + str(min_blocks_to_expire) + " on " + min_alias + ")")
         arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
         for _htlc in arr_htlcs_sorted:
-            print(str(_htlc["blocks_to_expire"]) + " blocks on " + _htlc["alias"])
+            status = ""
+            amount = f'{int(_htlc["amount"]):,}'
+            if not _htlc['active']:
+                status = " (I)"
+            print(str(_htlc['blocks_to_expire']) + " blocks on " + _htlc['alias'] + status + " for " + str(amount) + " sats")
         print("Current Height: " + str(current_height))
     else:
         print(format_boring_string("Current Height: ") + str(current_height))
         arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = True)
         for _htlc in arr_htlcs_sorted:
             formatted_blocks_to_expire = format_alias_red(f'{str(_htlc["blocks_to_expire"]):>4}')
+            formatted_amount = format_amount_green(int(_htlc["amount"]),9)
             if not _htlc["active"]:
-                formatted_active = f'{format_alias_red(str(_htlc["active"])):>5}'
+                formatted_alias = format_alias_red(_htlc['alias'])
             else:
-                formatted_active = f'{str(_htlc["active"]):>5}'
-            print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Active: ") + formatted_active + " | " + format_boring_string("Node: ") + _htlc['alias'])
+                formatted_alias = _htlc['alias']
+            print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Amount: ") + formatted_amount + " | " + format_boring_string("Node: ") + formatted_alias)
         print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
 
 def get_argument_parser():
