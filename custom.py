@@ -129,13 +129,9 @@ def main():
 def get_argument_parser():
     parser = argparse.ArgumentParser()
     rebalance_group = parser.add_argument_group(
-        #"rebalance",
-        #"Rebalance a vampire. You need to specify at least"
-        #" the 'rebalance' vampire (-r) or 'list' for running rebalances.",
-        "-r",
-        "--rebalance",
-        action='store_true', 
-        help="Run bos rebalances",
+        "rebalance",
+        "Rebalance a vampire. You need to specify at least"
+        " the 'rebalance' vampire (-r) or 'list' for running rebalances.",
     )
     parser.add_argument(
         "-d",
@@ -143,12 +139,12 @@ def get_argument_parser():
         action='store_true', 
         help="Print free disk space",
     )
-    #rebalance_group.add_argument(
-    #    "-r",
-    #    "--rebalance",
-    #    action='store_true', 
-    #    help="Run bos rebalances",
-    #)
+    rebalance_group.add_argument(
+        "-r",
+        "--rebalance",
+        action='store_true', 
+        help="Run bos rebalances",
+    )
     
     rebalance_group.add_argument(
         "-l",
