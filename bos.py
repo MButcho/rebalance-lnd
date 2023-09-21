@@ -107,9 +107,8 @@ def main():
         for _line in lines:
             regex = re.search(".*\/$", _line)
             if regex != None:
-                _output_arr = regex.group(0).split(" ")
-                _output_arr = [x for x in _output_arr if x != '']
-                print(_output_arr)
+                #_output_arr = regex.group(0).split(" ")
+                _output_arr = [x for x in regex.group(0).split(" ") if x != '']
                 fs = _output_arr[0]
                 size = _output_arr[1]
                 used = _output_arr[2]
