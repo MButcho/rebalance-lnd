@@ -78,10 +78,24 @@ def main():
     if arguments.list:
         command = "ps -ef | grep 'sh -c /usr/bin/bos'"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
-        result_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
-        print("☯ Running (" + str(len(result_arr)) + ") bos rebalances")
-        for _result in result_arr:
-            print(_result)
+        procs_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
+        tmp_arr = re.findall("(?<=>> ).*", result)
+        i = 0
+        print("☯ Running (" + str(len(procs_arr)) + ") bos rebalances")
+        for _procs in procs_arr:
+            try:
+                tmp_file = open(tmp_arr[i], 'r')
+                output = tmp_file.read()
+                tmp_file.close()
+                output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+            except:
+                output_arr = []
+                source = "N/A"
+            for _output in output_arr:
+                source_arr = _output.split(" ")
+                source = source_arr[0]
+            print(_procs + " | source: " + source)
+            i+=1
     
 def get_argument_parser():
     parser = argparse.ArgumentParser()
