@@ -88,18 +88,44 @@ def main():
                 tmp_file = open(tmp_arr[i], 'r')
                 output = tmp_file.read()
                 tmp_file.close()
-                output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                if regex != None:                    
+                    source_arr = regex.group(0).split(" ")
+                    source = ""
+                    for x in range(0, len(source_arr)-1):
+                        source += source_arr[x] + " "
             except:
-                output_arr = []
                 source = "N/A"
-            for _output in output_arr:
-                source_arr = _output.split(" ")
-                source = source_arr[0]
+            
             print(_procs + " | source: " + source)
             i+=1
+            
+    if arguments.disk:
+        command = "df -h"
+        result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
+        lines = result.split("\n")
+        for _line in lines:
+            regex = re.search(".*\/$", _line)
+            if regex != None:
+                #_output_arr = regex.group(0).split(" ")
+                _output_arr = [x for x in regex.group(0).split(" ") if x != '']
+                fs = _output_arr[0]
+                size = _output_arr[1]
+                used = _output_arr[2]
+                avail = _output_arr[3]
+                use = _output_arr[4]
+                free = 100-int(use[:-1])
+                mounted = _output_arr[5]                
+                print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
     
 def get_argument_parser():
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d",
+        "--disk",
+        action='store_true', 
+        help="Print free disk space",
+    )
     parser.add_argument(
         "-l",
         "--list",
