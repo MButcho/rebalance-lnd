@@ -128,11 +128,7 @@ def main():
     
 def get_argument_parser():
     parser = argparse.ArgumentParser()
-    rebalance_group = parser.add_mutually_exclusive_group(
-        "rebalance",
-        "Rebalance a vampire. You need to specify at least"
-        " the 'rebalance' vampire (-r) or 'list' for running rebalances.",
-    )
+    rebalance_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "-d",
         "--disk",
