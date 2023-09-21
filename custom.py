@@ -139,7 +139,7 @@ def get_argument_parser():
         action='store_true', 
         help="Print free disk space",
     )
-    rebalance_group.add_argument((
+    rebalance_group.add_argument(
         "-r",
         "--rebalance",
         action='store_true', 
