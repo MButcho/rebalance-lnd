@@ -102,7 +102,7 @@ def main():
         else:
             print(argument_parser.format_help())
             
-    if arguments.disk:
+    if arguments.command == "disk":
         command = "df -h"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
         lines = result.split("\n")
