@@ -148,7 +148,7 @@ def get_argument_parser():
         help="Run bos rebalances",
     )
     parent_parser.add_argument(
-        "-h",
+        "-p",
         "--htlc",
         action='store_true', 
         help="Show pending HTLCs",
