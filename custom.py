@@ -127,27 +127,83 @@ def main():
                 print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
     
 def get_argument_parser():
-    parser = argparse.ArgumentParser()
-    rebalance_group = parser.add_mutually_exclusive_group()
-    parser.add_argument(
+    parent_parser  = argparse.ArgumentParser()
+    disk_parser.add_argument(
         "-d",
         "--disk",
         action='store_true', 
         help="Print free disk space",
     )
-    rebalance_group.add_argument(
+    rebalance_parser.add_argument(
         "-r",
         "--rebalance",
         action='store_true', 
         help="Run bos rebalances",
     )
-    
-    rebalance_group.add_argument(
+    rebalance_subparsers = rebalance_parser.add_subparsers(title="Bos rebalance actions")
+    rebalance_subparsers.add_argument(
         "-l",
         "--list",
         action='store_true', 
-        help="Print running rebalances",
-    )    
+        help="Show running rebalances",
+    )
+    
+    rebalance_subparsers.add_argument(
+        "-l",
+        "--list",
+        action='store_true', 
+        help="Print list of rebalances",
+    )
+    rebalance_subparsers.add_argument(
+        "-d",
+        "--days",
+        type=int,
+        default=7,
+        help="Interval in days (default: 7)",
+    )
+    rebalance_subparsers.add_argument(
+        "-s",
+        "--summary",
+        action='store_true', 
+        help="Print summary of rebalances",
+    )
+    
+    htlc_parser.add_argument(
+        "-h",
+        "--htlc",
+        action='store_true', 
+        help="Show pending HTLCs",
+    )
+    htlc_subparsers = htlc_parser.add_subparsers(title="Pending HTLCs actions")
+    htlc_subparsers.add_argument(
+        "-t",
+        "--telegram",
+        action='store_true', 
+        help="Output in Telegram format",
+    )
+    
+    
+    
+    #main_group = parser.add_mutually_exclusive_group()
+    #main_group.add_argument(
+    #    "-d",
+    #    "--disk",
+    #    action='store_true', 
+    #    help="Print free disk space",
+    #)
+    #main_group.add_argument(
+    #    "-r",
+    #    "--rebalance",
+    #    action='store_true', 
+    #    help="Run bos rebalances",
+    #)
+    
+    #rebalance_group.add_argument(
+    #    "-l",
+    #    "--list",
+    #    action='store_true', 
+    #    help="Print running rebalances",
+    #)    
     return parser
     
 success = main()
