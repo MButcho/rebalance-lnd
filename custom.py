@@ -23,7 +23,7 @@ def main():
     arguments = argument_parser.parse_args()
     
     if arguments.command == "bos":
-        if argum.run == False and arguments.list == False
+        if argum.run == False and arguments.list == False:
             sys.exit(argument_parser.format_help())
             
         if arguments.run:
