@@ -127,7 +127,9 @@ def main():
                 print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
     
 def get_argument_parser():
-    parent_parser  = argparse.ArgumentParser()
+    disk_parser  = argparse.ArgumentParser()
+    rebalance_parser  = argparse.ArgumentParser()
+    htlc_parser  = argparse.ArgumentParser()
     disk_parser.add_argument(
         "-d",
         "--disk",
