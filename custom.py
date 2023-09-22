@@ -23,6 +23,9 @@ def main():
     arguments = argument_parser.parse_args()
     
     if arguments.command == "bos":
+        if argum.run == False and arguments.list == False
+            sys.exit(argument_parser.format_help())
+            
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
@@ -104,8 +107,6 @@ def main():
                 
                 print(_procs + " | source: " + source)
                 i+=1
-        else:
-            print(argument_parser.format_help())
             
     if arguments.command == "disk":
         command = "df -h"
@@ -126,6 +127,7 @@ def main():
                 print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
                 
     if arguments.command == "rebalances":
+        
         #logging.basicConfig(filename=script_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         summary_from = []
         summary_to = []
