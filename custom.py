@@ -12,101 +12,95 @@ from yachalk import chalk
 
 pid = os.getpid()
 script_path = os.path.dirname(sys.argv[0])
-bos_file_path = script_path+'/bos.conf'
-logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
-#max_time = 180 # max script run time
-#minutes = round(max_time / len(vampires)) - 1
-minutes = 30
-amount = 3000 * 1000
 
 def main():
     argument_parser = get_argument_parser()
     arguments = argument_parser.parse_args()
     
-    if arguments.rebalance:
-        print("arguments.rebalance")
-        
-    if arguments.list:
-        print("arguments.list")
-    
-    sys.exit(0)
-    
-    if arguments.rebalance:
-        logging.info("Rebalancing started (" + str(minutes) + " mins)")
+    if arguments.command == "bos":
+        if arguments.run:
+            #max_time = 180 # max script run time
+            #minutes = round(max_time / len(vampires)) - 1
+            minutes = 30
+            amount = 3000 * 1000
+            bos_file_path = script_path+'/bos.conf'
+            logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
+            logging.info("Rebalancing started (" + str(minutes) + " mins)")
 
-        bos_file = open(bos_file_path, 'r')
-        vampires_l = bos_file.read().split('\n')
-        bos_file.close()
-        vampires = [x for x in vampires_l if x != '']
+            bos_file = open(bos_file_path, 'r')
+            vampires_l = bos_file.read().split('\n')
+            bos_file.close()
+            vampires = [x for x in vampires_l if x != '']
 
-        for str_line in vampires:
-            if str_line != "":
-                str_line_arr = str_line.split(';')
-                alias = str_line_arr[0]
-                own_ppm = round(int(str_line_arr[1]))
-                ratio = round(float(str_line_arr[2]))
-                events = round(int(str_line_arr[3]))
+            for str_line in vampires:
+                if str_line != "":
+                    str_line_arr = str_line.split(';')
+                    alias = str_line_arr[0]
+                    own_ppm = round(int(str_line_arr[1]))
+                    ratio = round(float(str_line_arr[2]))
+                    events = round(int(str_line_arr[3]))
+                    
+                    target_ratio = 7.5+(ratio/15) # check https://www.desmos.com/calculator
+                    #target_ratio = 10-(ratio/7.5) # check https://www.desmos.com/calculator
+                    event_ratio = 1.5-(events/20) # check https://www.desmos.com/calculator
+                    if event_ratio < 1:
+                        event_ratio = 1
+                    target_ratio = target_ratio/event_ratio
+                    target_ppm = round(own_ppm*((100-target_ratio)/100))
+                    fee_delta = own_ppm - target_ppm
+                    
+                    start_time = datetime.now()        
+                    logging.info(alias + " started (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
+                    
+                    temp = tempfile.NamedTemporaryFile()
+                    os.chmod(temp.name, 0o644)
+                    #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
+                    command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
+                    result = os.system(command)
+                    output = temp.read().decode('utf-8')
+                    #output_arr = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                    output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                    #print(source.string)
+                    for _output in output_arr:
+                        source_arr = _output.split(" ")
+                        source = source_arr[0]
+                    end_time = datetime.now()
+                    delta_min = round((end_time - start_time).total_seconds() / 60)
+                    if delta_min < minutes:
+                        formatted_mins = chalk.red(str(delta_min) + " mins")
+                    else:
+                        formatted_mins = chalk.green(str(delta_min) + " mins")
+                    logging.info(alias + " from " + source + " finished in " + formatted_mins + " (" + str(result) + ")")
+                    time.sleep(30)
+                    #logging.error('some error')
+                    #logging.debug('some debug')
+                    
+            logging.info("Rebalancing finished")
+        elif if arguments.list:
+            command = "ps -ef | grep 'sh -c /usr/bin/bos'"
+            result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
+            procs_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
+            tmp_arr = re.findall("(?<=>> ).*", result)
+            i = 0
+            print("☯ Running (" + str(len(procs_arr)) + ") bos rebalances")
+            for _procs in procs_arr:
+                try:
+                    tmp_file = open(tmp_arr[i], 'r')
+                    output = tmp_file.read()
+                    tmp_file.close()
+                    regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                    if regex != None:                    
+                        source_arr = regex.group(0).split(" ")
+                        source = ""
+                        for x in range(0, len(source_arr)-1):
+                            source += source_arr[x] + " "
+                except:
+                    source = "N/A"
                 
-                target_ratio = 7.5+(ratio/15) # check https://www.desmos.com/calculator
-                #target_ratio = 10-(ratio/7.5) # check https://www.desmos.com/calculator
-                event_ratio = 1.5-(events/20) # check https://www.desmos.com/calculator
-                if event_ratio < 1:
-                    event_ratio = 1
-                target_ratio = target_ratio/event_ratio
-                target_ppm = round(own_ppm*((100-target_ratio)/100))
-                fee_delta = own_ppm - target_ppm
-                
-                start_time = datetime.now()        
-                logging.info(alias + " started (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
-                
-                temp = tempfile.NamedTemporaryFile()
-                os.chmod(temp.name, 0o644)
-                #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
-                command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
-                result = os.system(command)
-                output = temp.read().decode('utf-8')
-                #output_arr = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                #print(source.string)
-                for _output in output_arr:
-                    source_arr = _output.split(" ")
-                    source = source_arr[0]
-                end_time = datetime.now()
-                delta_min = round((end_time - start_time).total_seconds() / 60)
-                if delta_min < minutes:
-                    formatted_mins = chalk.red(str(delta_min) + " mins")
-                else:
-                    formatted_mins = chalk.green(str(delta_min) + " mins")
-                logging.info(alias + " from " + source + " finished in " + formatted_mins + " (" + str(result) + ")")
-                time.sleep(30)
-                #logging.error('some error')
-                #logging.debug('some debug')
-                
-        logging.info("Rebalancing finished")
-        
-    if arguments.list:
-        command = "ps -ef | grep 'sh -c /usr/bin/bos'"
-        result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
-        procs_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
-        tmp_arr = re.findall("(?<=>> ).*", result)
-        i = 0
-        print("☯ Running (" + str(len(procs_arr)) + ") bos rebalances")
-        for _procs in procs_arr:
-            try:
-                tmp_file = open(tmp_arr[i], 'r')
-                output = tmp_file.read()
-                tmp_file.close()
-                regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                if regex != None:                    
-                    source_arr = regex.group(0).split(" ")
-                    source = ""
-                    for x in range(0, len(source_arr)-1):
-                        source += source_arr[x] + " "
-            except:
-                source = "N/A"
-            
-            print(_procs + " | source: " + source)
-            i+=1
+                print(_procs + " | source: " + source)
+                i+=1
+        else:
+            print(argument_parser.format_help())
             
     if arguments.disk:
         command = "df -h"
@@ -127,88 +121,52 @@ def main():
                 print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
     
 def get_argument_parser():
-    # disk_parser  = argparse.ArgumentParser()
-    # parent_parser = argparse.ArgumentParser()
-    # parent_parser.add_argument(
-        # "-d",
-        # "--disk",
-        # action='store_true', 
-        # help="Show free disk space",
-    # )
-    # parent_parser.add_argument(
-        # "-b",
-        # "--bos",
-        # action='store_true', 
-        # help="Run bos rebalances",
-    # )
-    # parent_parser.add_argument(
-        # "-r",
-        # "--rebalance",
-        # action='store_true', 
-        # help="Run bos rebalances",
-    # )
-    # parent_parser.add_argument(
-        # "-p",
-        # "--htlc",
-        # action='store_true', 
-        # help="Show pending HTLCs",
-    # )
-    # subparsers = parent_parser.add_subparsers(title="actions")
-    # bos_subparsers = subparsers.add_parser(title="Bos rebalance actions")
-    # bos_subparsers.add_argument(
-        # "-l",
-        # "--list",
-        # parents=["-b"],
-        # action='store_true', 
-        # help="Show running bos rebalances",
-    # )
-    # rebalance_subparsers = subparsers.add_subparsers(title="List past rebalances")
-    # rebalance_subparsers.add_parser(
-        # "-l",
-        # "--list",
-        # parents=["-r"],
-        # action='store_true', 
-        # help="Show list of rebalances",
-    # )
-    # rebalance_subparsers.add_parser(
-        # "-d",
-        # "--days",
-        # parents=["-r"],
-        # type=int,
-        # default=7,
-        # help="Interval in days (default: 7)",
-    # )
-    # rebalance_subparsers.add_parser(
-        # "-s",
-        # "--summary",
-        # parents=["-r"],
-        # action='store_true', 
-        # help="Print summary of rebalances",
-    # )
-    
-    # htlc_subparsers = subparsers.add_subparsers(title="Pending HTLCs actions")
-    # htlc_subparsers.add_parser(
-        # "-t",
-        # "--telegram",
-        # action='store_true', 
-        # help="Output in Telegram format",
-    # )
-    
-    
-    
-    parent_parser = argparse.ArgumentParser(description="The parent parser")
-    parent_parser.add_argument("-p", type=int, required=True,
-                               help="set db parameter")
-    subparsers = parent_parser.add_subparsers(title="actions")
-    parser_create = subparsers.add_parser("create", parents=[parent_parser],
-                                          add_help=False,
-                                          description="The create parser",
-                                          help="create the orbix environment")
-    parser_create.add_argument("--name", help="name of the environment")
-    parser_update = subparsers.add_parser("update", parents=[parent_parser],
-                                          add_help=False,
-                                          description="The update parser",
-                                          help="update the orbix environment")
+    parent_parser = argparse.ArgumentParser(description="The main script")
+    subparsers = parent_parser.add_subparsers(title="commands", dest="command")
+    parser_bos = subparsers.add_parser("bos", add_help=True, help="run bos rebalances")
+    group_bos = parser_bos.add_mutually_exclusive_group()
+    group_bos.add_argument(
+        "-l", 
+        "--list", 
+        action='store_true', 
+        help="show running bos rebalances"
+    )
+    group_bos.add_argument(
+        "-r",
+        "--run",
+        action='store_true', 
+        help="run bos rebalances",
+    )
+    parser_disk = subparsers.add_parser("disk", add_help=False, help="show free disk space")
+    parser_rebalances = subparsers.add_parser("rebalances", add_help=True, help="show past rebalances")
+    group_rebalances = parser_rebalances.add_mutually_exclusive_group()
+    group_rebalances.add_argument(
+        "-l", 
+        "--list", 
+        action='store_true', 
+        help="show list of rebalances"
+    )
+    group_rebalances.add_argument(
+        "-s",
+        "--summary",
+        action='store_true', 
+        help="show summary of rebalances",
+    )
+    parser_rebalances.add_argument(
+        "-d",
+        "--days",
+        type=int,
+        default=7,
+        help="interval in days (default: 7)",
+    )
+    parser_htlcs = subparsers.add_parser("htlcs", add_help=True, help="show pending HTLCs")
+    group_htlcs = parser_htlcs.add_argument_group()                                      
+    group_htlcs.add_argument(
+        "-t",
+        "--telegram",
+        action='store_true', 
+        help="output in telegram format",
+    )
     return parent_parser
     
 success = main()
