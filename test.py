@@ -30,13 +30,28 @@ def get_argument_parser():
         action='store_true', 
         help="Show pending HTLCs",
     )
-    subparsers = parent_parser.add_subparsers(title="actions")
+    
+    bos_group = parent_parser.add_argument_group('bos')
+    bos_group.add_argument(
+        "-l",
+        "--list",
+        action='store_true', 
+        help="Show running bos rebalances",
+    )
+    bos_group.add_argument(
+        "-r",
+        "--run",
+        action='store_true', 
+        help="Run bos rebalances",
+    )
+    
+    #subparsers = parent_parser.add_subparsers(title="actions")
     #bos_subparsers = subparsers.add_parser(title="Bos rebalance actions")
-    parser_create = subparsers.add_parser("create", parents=[parent_parser],
-                                          add_help=False,
-                                          description="The create parser",
-                                          help="create the orbix environment")
-    parser_create.add_argument("--name", help="name of the environment")
+    #parser_create = subparsers.add_parser("create", parents=[parent_parser],
+                                          # add_help=False,
+                                          # description="The create parser",
+                                          # help="create the orbix environment")
+    #parser_create.add_argument("--name", help="name of the environment")
     
     
     # bos_subparsers.add_argument(
