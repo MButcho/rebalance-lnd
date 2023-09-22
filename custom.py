@@ -76,7 +76,7 @@ def main():
                     #logging.debug('some debug')
                     
             logging.info("Rebalancing finished")
-        elif if arguments.list:
+        elif arguments.list:
             command = "ps -ef | grep 'sh -c /usr/bin/bos'"
             result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
             procs_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
