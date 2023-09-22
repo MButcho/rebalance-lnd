@@ -154,7 +154,7 @@ def get_argument_parser():
         help="Show pending HTLCs",
     )
     subparsers = parent_parser.add_subparsers(title="actions")
-    bos_subparsers = subparsers.add_subparsers(title="Bos rebalance actions")
+    bos_subparsers = subparsers.add_parser(title="Bos rebalance actions")
     bos_subparsers.add_argument(
         "-l",
         "--list",
@@ -163,14 +163,14 @@ def get_argument_parser():
         help="Show running bos rebalances",
     )
     rebalance_subparsers = subparsers.add_subparsers(title="List past rebalances")
-    rebalance_subparsers.add_argument(
+    rebalance_subparsers.add_parser(
         "-l",
         "--list",
         parents=["-r"],
         action='store_true', 
         help="Show list of rebalances",
     )
-    rebalance_subparsers.add_argument(
+    rebalance_subparsers.add_parser(
         "-d",
         "--days",
         parents=["-r"],
@@ -178,7 +178,7 @@ def get_argument_parser():
         default=7,
         help="Interval in days (default: 7)",
     )
-    rebalance_subparsers.add_argument(
+    rebalance_subparsers.add_parser(
         "-s",
         "--summary",
         parents=["-r"],
@@ -187,7 +187,7 @@ def get_argument_parser():
     )
     
     htlc_subparsers = subparsers.add_subparsers(title="Pending HTLCs actions")
-    htlc_subparsers.add_argument(
+    htlc_subparsers.add_parser(
         "-t",
         "--telegram",
         action='store_true', 
