@@ -275,7 +275,7 @@ def get_argument_parser():
     parent_parser = argparse.ArgumentParser(description="The main script")
     subparsers = parent_parser.add_subparsers(title="commands", dest="command")
     parser_bos = subparsers.add_parser("bos", add_help=True, help="run bos rebalances")
-    group_bos = parser_bos.add_mutually_exclusive_group()
+    group_bos = parser_bos.add_mutually_exclusive_group(required=True)
     group_bos.add_argument(
         "-l", 
         "--list", 
@@ -290,7 +290,7 @@ def get_argument_parser():
     )
     parser_disk = subparsers.add_parser("disk", add_help=False, help="show free disk space")
     parser_rebalances = subparsers.add_parser("rebalances", add_help=True, help="show past rebalances")
-    group_rebalances = parser_rebalances.add_mutually_exclusive_group()
+    group_rebalances = parser_rebalances.add_mutually_exclusive_group(required=True)
     group_rebalances.add_argument(
         "-l", 
         "--list", 
