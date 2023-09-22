@@ -23,9 +23,6 @@ def main():
     arguments = argument_parser.parse_args()
     
     if arguments.command == "bos":
-        if arguments.run == False and arguments.list == False:
-            sys.exit(argument_parser.format_help())
-            
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
@@ -108,7 +105,7 @@ def main():
                 print(_procs + " | source: " + source)
                 i+=1
             
-    if arguments.command == "disk":
+    elif arguments.command == "disk":
         command = "df -h"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
         lines = result.split("\n")
@@ -126,7 +123,7 @@ def main():
                 mounted = _output_arr[5]                
                 print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
     
-    if arguments.command == "htlcs":
+    elif arguments.command == "htlcs":
         logging.basicConfig(filename=script_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         command = "/usr/local/bin/lncli getinfo"
         result = json.loads(subprocess.check_output(command, shell = True))
@@ -194,7 +191,7 @@ def main():
                 print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Amount: ") + formatted_amount + " | " + format_boring_string("Node: ") + formatted_alias)
             print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
     
-    if arguments.command == "rebalances":
+    elif arguments.command == "rebalances":
         
         #logging.basicConfig(filename=script_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         summary_from = []
@@ -270,6 +267,10 @@ def main():
             summary_to_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_to))).items(), key = lambda x:x[1], reverse = True)
             for _peer, _value in summary_to_sorted:
                 print(str(format_amount_green(_value,0)) + " → " + _peer)
+    else:
+        sys.exit(argument_parser.format_help())
+            
+        
     
 def get_argument_parser():
     parent_parser = argparse.ArgumentParser(description="The main script")
@@ -289,6 +290,14 @@ def get_argument_parser():
         help="run bos rebalances",
     )
     parser_disk = subparsers.add_parser("disk", add_help=False, help="show free disk space")
+    parser_htlcs = subparsers.add_parser("htlcs", add_help=True, help="show pending HTLCs")
+    group_htlcs = parser_htlcs.add_argument_group()                                      
+    group_htlcs.add_argument(
+        "-t",
+        "--telegram",
+        action='store_true', 
+        help="output in telegram format",
+    )
     parser_rebalances = subparsers.add_parser("rebalances", add_help=True, help="show past rebalances")
     group_rebalances = parser_rebalances.add_mutually_exclusive_group(required=True)
     group_rebalances.add_argument(
@@ -309,14 +318,6 @@ def get_argument_parser():
         type=int,
         default=7,
         help="interval in days (default: 7)",
-    )
-    parser_htlcs = subparsers.add_parser("htlcs", add_help=True, help="show pending HTLCs")
-    group_htlcs = parser_htlcs.add_argument_group()                                      
-    group_htlcs.add_argument(
-        "-t",
-        "--telegram",
-        action='store_true', 
-        help="output in telegram format",
     )
     return parent_parser
     
