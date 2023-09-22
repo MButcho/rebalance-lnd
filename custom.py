@@ -128,37 +128,52 @@ def main():
     
 def get_argument_parser():
     disk_parser  = argparse.ArgumentParser()
-    rebalance_parser  = argparse.ArgumentParser()
-    htlc_parser  = argparse.ArgumentParser()
-    disk_parser.add_argument(
+    parent_parser = argparse.ArgumentParser()
+    parent_parser.add_argument(
         "-d",
         "--disk",
         action='store_true', 
-        help="Print free disk space",
+        help="Show free disk space",
     )
-    rebalance_parser.add_argument(
+    parent_parser.add_argument(
+        "-b",
+        "--bos",
+        action='store_true', 
+        help="Run bos rebalances",
+    )
+    parent_parser.add_argument(
         "-r",
         "--rebalance",
         action='store_true', 
         help="Run bos rebalances",
     )
-    rebalance_subparsers = rebalance_parser.add_subparsers(title="Bos rebalance actions")
-    rebalance_subparsers.add_argument(
-        "-l",
-        "--list",
+    parent_parser.add_argument(
+        "-h",
+        "--htlc",
         action='store_true', 
-        help="Show running rebalances",
+        help="Show pending HTLCs",
     )
-    
+    subparsers = parent_parser.add_subparsers(title="actions")
+    bos_subparsers = subparsers.add_subparsers(title="Bos rebalance actions")
+    bos_subparsers.add_argument(
+        "-l",
+        "--list",
+        parents=["-b"],
+        action='store_true', 
+        help="Show running bos rebalances",
+    )
+    rebalance_subparsers = subparsers.add_subparsers(title="List past rebalances")
     rebalance_subparsers.add_argument(
         "-l",
         "--list",
+        parents=["-r"],
         action='store_true', 
-        help="Print list of rebalances",
+        help="Show list of rebalances",
     )
     rebalance_subparsers.add_argument(
         "-d",
         "--days",
+        parents=["-r"],
         type=int,
         default=7,
         help="Interval in days (default: 7)",
@@ -166,17 +181,12 @@ def get_argument_parser():
     rebalance_subparsers.add_argument(
         "-s",
         "--summary",
+        parents=["-r"],
         action='store_true', 
         help="Print summary of rebalances",
     )
     
-    htlc_parser.add_argument(
-        "-h",
-        "--htlc",
-        action='store_true', 
-        help="Show pending HTLCs",
-    )
-    htlc_subparsers = htlc_parser.add_subparsers(title="Pending HTLCs actions")
+    htlc_subparsers = subparsers.add_subparsers(title="Pending HTLCs actions")
     htlc_subparsers.add_argument(
         "-t",
         "--telegram",
