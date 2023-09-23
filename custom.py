@@ -62,8 +62,8 @@ def main():
                     #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
                     command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
                     source = "N/A"
+                    result = os.system(command)
                     try:
-                        result = os.system(command)
                         output = temp.read().decode('utf-8')
                         regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
                         if regex != None:                    
@@ -79,7 +79,7 @@ def main():
                         formatted_mins = chalk.red(str(delta_min) + " mins")
                     else:
                         formatted_mins = chalk.green(str(delta_min) + " mins")
-                    logging.info(alias + " from " + source + " finished in " + formatted_mins + " (" + str(result) + ")")
+                    logging.info(alias + " from " + source.strip() + " finished in " + formatted_mins + " (" + str(result) + ")")
                     time.sleep(30)
                     #logging.error('some error')
                     #logging.debug('some debug')
@@ -106,7 +106,7 @@ def main():
                 except:
                     source = "N/A"
                 
-                print(_procs + " | source: " + source)
+                print("Source: " + source.strip() + " | " + _procs)
                 i+=1
             
     elif arguments.command == "disk":

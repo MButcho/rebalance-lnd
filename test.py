@@ -3,6 +3,9 @@ import argparse
 def main():
     argument_parser = get_argument_parser()
     arguments = argument_parser.parse_args()
+    
+    test = "something "
+    print(test.strip() + "cool")
     if arguments.command == "bos":
         if arguments.run:
             print("running bos command with --run")
