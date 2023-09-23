@@ -113,6 +113,7 @@ def main():
             i = 0
             print("☯ Running (" + b_start + str(len(procs_arr)) + b_end + ") bos rebalances (" + b_start + str(minutes) + " mins" + b_end + ")")
             for _procs in procs_arr:
+                source = "N/A"
                 try:
                     tmp_file = open(tmp_arr[i], 'r')
                     output = tmp_file.read()

@@ -476,7 +476,8 @@ class Rebalance:
                         
             
             for _vamp_arr_item in vamp_arr:
-                bos_arr.append(_vamp_arr_item["alias"] + ";" + str(_vamp_arr_item["fee_adjusted"]) + ";" + str(_vamp_arr_item["ratio"]) + ";" + str(_vamp_arr_item["events_count"]) + "\n")              
+                if _vamp_arr_item["ratio"] < 50:
+                    bos_arr.append(_vamp_arr_item["alias"] + ";" + str(_vamp_arr_item["fee_adjusted"]) + ";" + str(_vamp_arr_item["ratio"]) + ";" + str(_vamp_arr_item["events_count"]) + "\n")              
             bos_file.writelines(bos_arr[::-1])
             bos_file.close()
         
