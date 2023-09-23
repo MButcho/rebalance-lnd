@@ -22,12 +22,27 @@ def main():
     argument_parser = get_argument_parser()
     arguments = argument_parser.parse_args()
     
+    b_start = ""
+    b_end = ""
+    u_start = ""
+    u_end = ""
+    i_start = ""
+    i_end = ""
+    if arguments.telegram:
+        b_start = "<b>"
+        b_end = "</b>"
+        u_start = "<u>"
+        u_end = "</u>"
+        i_start = "<i>"
+        i_end = "</i>"
+    
     if arguments.command == "bos":
+        minutes = 30
+        amount = 3000 * 1000
+            
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
-            minutes = 30
-            amount = 3000 * 1000
             bos_file_path = script_path+'/bos.conf'
             logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
             logging.info("Rebalancing started (" + str(minutes) + " mins)")
@@ -91,7 +106,7 @@ def main():
             procs_arr = re.findall("(?<=sh -c \/usr\/bin\/).*?(?= >>)", result)
             tmp_arr = re.findall("(?<=>> ).*", result)
             i = 0
-            print("☯ Running (" + str(len(procs_arr)) + ") bos rebalances")
+            print("☯ Running (" + b_start + str(len(procs_arr)) + b_end + ") bos rebalances (" + b_start + str(minutes) + " mins" + b_end + ")")
             for _procs in procs_arr:
                 try:
                     tmp_file = open(tmp_arr[i], 'r')
@@ -106,7 +121,7 @@ def main():
                 except:
                     source = "N/A"
                 
-                print("Source: " + source.strip() + " | " + _procs)
+                print("Source: " + b_start + source.strip() + b_end + " | " + _procs)
                 i+=1
             
     elif arguments.command == "disk":
@@ -125,7 +140,7 @@ def main():
                 use = _output_arr[4]
                 free = 100-int(use[:-1])
                 mounted = _output_arr[5]                
-                print("🖥 " + avail + " (" + str(free) + "%) free of " + size + " disk mounted on " + mounted)
+                print("🖥 " + avail + " (" + b_start + str(free) + b_end + "%) free of " + size + " disk mounted on " + mounted)
     
     elif arguments.command == "htlcs":
         logging.basicConfig(filename=script_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
@@ -172,17 +187,7 @@ def main():
         except:
             print("")
         
-        if arguments.telegram:
-            print("💰" + str(i) + " pending HTLCs (min. " + str(min_blocks_to_expire) + " on " + min_alias + ")")
-            arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
-            for _htlc in arr_htlcs_sorted:
-                status = ""
-                amount = f'{int(_htlc["amount"]):,}'
-                if not _htlc['active']:
-                    status = " (I)"
-                print(str(_htlc['blocks_to_expire']) + " blocks on " + _htlc['alias'] + status + " for " + str(amount) + " sats")
-            print("Current Height: " + str(current_height))
-        else:
+        if arguments.list:
             print(format_boring_string("Current Height: ") + str(current_height))
             arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = True)
             for _htlc in arr_htlcs_sorted:
@@ -194,9 +199,24 @@ def main():
                     formatted_alias = _htlc['alias']
                 print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Amount: ") + formatted_amount + " | " + format_boring_string("Node: ") + formatted_alias)
             print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
-    
+        if arguments.summary:
+            print("💰 " + b_start + str(i) + b_end + " pending HTLCs (min. " + b_start + str(min_blocks_to_expire) + b_end + " on " + b_start + min_alias + b_end + ")")
+            arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
+            for _htlc in arr_htlcs_sorted:
+                formatted_blocks_to_expire = format_alias_red(f'{str(_htlc["blocks_to_expire"]):>4}')
+                formatted_amount = format_amount_green(int(_htlc["amount"]),0)
+                if not _htlc["active"]:
+                    formatted_alias = format_alias_red(_htlc['alias'])
+                else:
+                    formatted_alias = _htlc['alias']
+                status = ""
+                amount = f'{int(_htlc["amount"]):,}'
+                if not _htlc['active']:
+                    status = " (I)"
+                print(b_start + str(formatted_blocks_to_expire) + b_end + " blocks on " + b_start + formatted_alias + status + b_end + " for " + i_start + str(formatted_amount) + i_end + " sats")
+            print(i_start + "Current Height: " + b_start + str(current_height) + b_end + i_end)
+            
     elif arguments.command == "rebalances":
-        
         #logging.basicConfig(filename=script_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         summary_from = []
         summary_to = []
@@ -259,17 +279,17 @@ def main():
                     if arguments.list:
                         print(format_boring_string(date) + " | " + peer_from + " -> " + peer_to + " | " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " | " + format_boring_string("Fee: ") + str(format_amount_red_s(round(int(total_fees_msat)/1000,3),3)))
 
-        print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + format_amount_red_s(str(i),0) + " | " + format_boring_string("Value: ") + str(format_amount_green(round(int(value)),0)) + " | " + format_boring_string("Fees: ") + str(format_amount_red_s(round(fees,3),3)))
+        print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " | " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " | " + format_boring_string("Fees: ") + i_start + str(format_amount_red_s(round(fees,3),3)) + i_end)
         
         if arguments.summary:
-            print(format_boring_string("Sources (from):"))
+            print(format_boring_string(b_start + u_start + "Sources (from):" + u_end + b_end))
             summary_from_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_from))).items(), key = lambda x:x[1], reverse = True)
             for _peer, _value in summary_from_sorted:
-                print(str(format_amount_red(_value,0)) + " ← " + _peer)
-            print(format_boring_string("Vampires (to):"))
+                print(i_start + str(format_amount_red(_value,0)) + i_end + " ← " + _peer)
+            print(format_boring_string(b_start + u_start + "Vampires (to):" + u_end + b_end))
             summary_to_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_to))).items(), key = lambda x:x[1], reverse = True)
             for _peer, _value in summary_to_sorted:
-                print(str(format_amount_green(_value,0)) + " → " + _peer)
+                print(i_start + str(format_amount_green(_value,0)) + i_end + " → " + _peer)
     else:
         sys.exit(argument_parser.format_help())
             
@@ -277,6 +297,12 @@ def main():
     
 def get_argument_parser():
     parent_parser = argparse.ArgumentParser(description="The main script")
+    parent_parser.add_argument(
+        "-t",
+        "--telegram",
+        action='store_true', 
+        help="output in telegram format",
+    )
     subparsers = parent_parser.add_subparsers(title="commands", dest="command")
     parser_bos = subparsers.add_parser("bos", add_help=True, help="run bos rebalances")
     group_bos = parser_bos.add_mutually_exclusive_group(required=True)
@@ -294,13 +320,19 @@ def get_argument_parser():
     )
     parser_disk = subparsers.add_parser("disk", add_help=False, help="show free disk space")
     parser_htlcs = subparsers.add_parser("htlcs", add_help=True, help="show pending HTLCs")
-    group_htlcs = parser_htlcs.add_argument_group()                                      
+    group_htlcs = parser_htlcs.add_mutually_exclusive_group() 
     group_htlcs.add_argument(
-        "-t",
-        "--telegram",
+        "-l", 
+        "--list", 
         action='store_true', 
-        help="output in telegram format",
+        help="show list of rebalances"
     )
+    group_htlcs.add_argument(
+        "-s",
+        "--summary",
+        action='store_true', 
+        help="show summary of rebalances",
+    )    
     parser_rebalances = subparsers.add_parser("rebalances", add_help=True, help="show past rebalances")
     group_rebalances = parser_rebalances.add_mutually_exclusive_group(required=True)
     group_rebalances.add_argument(
