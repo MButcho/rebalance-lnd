@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from yachalk import chalk
 import json
 import collections, functools, operator
+import random
 
 from output import format_alias_red, format_boring_string, format_amount_red_s, format_amount_green, format_amount_red
 mbsats4all = "02e38fd514a17b976cdbeddaf10bf4d0c3ee3211791d353cb755c9237189a91b96"
@@ -43,7 +44,11 @@ def main():
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
+            command = "/usr/local/bin/lncli listchannels"
+            listchannels = json.loads(subprocess.check_output(command, shell = True))
+            
             bos_file_path = script_path+'/bos.conf'
+            bos_tags_path = os.path.expanduser("~")+"/.bos/tags.json"
             logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
             logging.info("Rebalancing started (" + str(minutes) + " mins)")
 
@@ -69,37 +74,56 @@ def main():
                     target_ppm = round(own_ppm*((100-target_ratio)/100))
                     fee_delta = own_ppm - target_ppm
                     
-                    start_time = datetime.now()        
-                    logging.info(alias + " started (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
-                    
-                    temp = tempfile.NamedTemporaryFile()
-                    os.chmod(temp.name, 0o644)
-                    #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
-                    command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
-                    source = "N/A"
-                    result = os.system(command)
+                    # sources
+                    _sources_arr = []
                     try:
-                        output = temp.read().decode('utf-8')
-                        regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                        if regex != None:                    
-                            source_arr = regex.group(0).split(" ")
-                            source = ""
-                            for x in range(0, len(source_arr)-1):
-                                source += source_arr[x] + " "
+                        #source_i = random.randint(0,2)
+                        _sources = json.load(open(bos_tags_path))
+                        for _tag in _sources['tags']:
+                            if _tag['alias'] == "sources":
+                                for _source in _tag['nodes']:
+                                    _sources_arr.append(_source)
+                                    
+                        random.shuffle(_sources_arr)
                     except:
-                        source = "N/A"
-                    end_time = datetime.now()
-                    delta_min = round((end_time - start_time).total_seconds() / 60)
-                    if delta_min < minutes:
-                        formatted_mins = chalk.red(str(delta_min) + " mins")
-                    else:
-                        formatted_mins = chalk.green(str(delta_min) + " mins")
-                    logging.info(alias + " from " + source.strip() + " finished in " + formatted_mins + " (" + str(result) + ")")
-                    if delta_min == 0:
-                        rebalance_err_file = open("/var/log/mb/rebalance_err.log", 'a')
-                        rebalance_err_file.write(end_time.strftime("%Y-%m-%d %H:%M:%S"))
-                        rebalance_err_file.write(output)
-                        rebalance_err_file.close()
+                        _sources_arr.append("sources")
+                    
+                    delta_min = 0
+                    for _source in _sources_arr:
+                        if delta_min == 0:
+                            for _channel in listchannels['channels']:
+                                if _channel['remote_pubkey'] == _source:
+                                    source = _channel['peer_alias']
+                            start_time = datetime.now()        
+                            logging.info(alias + " started via " + source + " (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
+                            
+                            temp = tempfile.NamedTemporaryFile()
+                            os.chmod(temp.name, 0o644)
+                            command = "/usr/bin/bos rebalance --in '" + alias + "' --out '" + source + "' --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
+                            #source = "N/A"
+                            result = os.system(command)
+                            try:
+                                output = temp.read().decode('utf-8')
+                                # regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                                # if regex != None:                    
+                                    # source_arr = regex.group(0).split(" ")
+                                    # source = ""
+                                    # for x in range(0, len(source_arr)-1):
+                                        # source += source_arr[x] + " "
+                            except:
+                                output = "N/A"
+                            end_time = datetime.now()
+                            delta_min = round((end_time - start_time).total_seconds() / 60)
+                            if delta_min < minutes:
+                                formatted_mins = chalk.red(str(delta_min) + " mins")
+                            else:
+                                formatted_mins = chalk.green(str(delta_min) + " mins")
+                            logging.info(alias + " via " + source.strip() + " finished in " + formatted_mins + " (" + str(result) + ")")
+                            if delta_min == 0:
+                                rebalance_err_file = open("/var/log/mb/rebalance_err.log", 'a')
+                                rebalance_err_file.write(end_time.strftime("%Y-%m-%d %H:%M:%S"))
+                                rebalance_err_file.write(output)
+                                rebalance_err_file.close()
                     time.sleep(30)
                     #logging.error('some error')
                     #logging.debug('some debug')
@@ -127,7 +151,8 @@ def main():
                 except:
                     source = "N/A"
                 
-                print("Source: " + b_start + source.strip() + b_end + " | " + _procs)
+                #print("Source: " + b_start + source.strip() + b_end + " | " + _procs)
+                print(b_start + str(i+1) + ". " + b_end + _procs)
                 i+=1
             
     elif arguments.command == "disk":
@@ -155,13 +180,13 @@ def main():
         current_height = result['block_height']
 
         command = "/usr/local/bin/lncli listchannels"
-        result = json.loads(subprocess.check_output(command, shell = True))
+        listchannels = json.loads(subprocess.check_output(command, shell = True))
         i = 0
         min_blocks_to_expire = 50000
         min_alias = ""
         all_htlcs = ""
         arr_htlcs = []
-        for channel in result['channels']:
+        for channel in listchannels['channels']:
             alias = channel['peer_alias']
             active = channel['active']
             for pending_htlc in channel['pending_htlcs']:
@@ -234,10 +259,10 @@ def main():
         from_interval = int(round((datetime.now() - timedelta(days=interval)).timestamp()))
 
         command = "/usr/local/bin/lncli listchannels"
-        channels_json = json.loads(subprocess.check_output(command, shell = True))
+        listchannels = json.loads(subprocess.check_output(command, shell = True))
         chan_ids = []
         peer_aliases = []
-        for channel in channels_json['channels']:
+        for channel in listchannels['channels']:
             chan_ids.append(channel['chan_id'])
             peer_aliases.append(channel['peer_alias'])
 
@@ -298,8 +323,6 @@ def main():
                 print(i_start + str(format_amount_green(_value,0)) + i_end + " → " + _peer)
     else:
         sys.exit(argument_parser.format_help())
-            
-        
     
 def get_argument_parser():
     parent_parser = argparse.ArgumentParser(description="The main script")
