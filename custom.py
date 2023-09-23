@@ -61,14 +61,18 @@ def main():
                     os.chmod(temp.name, 0o644)
                     #command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + script_path + "/bos_raw.log"
                     command = "/usr/bin/bos rebalance --in '" + alias + "' --out sources --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
-                    result = os.system(command)
-                    output = temp.read().decode('utf-8')
-                    #output_arr = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                    output_arr = re.findall("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                    #print(source.string)
-                    for _output in output_arr:
-                        source_arr = _output.split(" ")
-                        source = source_arr[0]
+                    source = "N/A"
+                    try:
+                        result = os.system(command)
+                        output = temp.read().decode('utf-8')
+                        regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                        if regex != None:                    
+                            source_arr = regex.group(0).split(" ")
+                            source = ""
+                            for x in range(0, len(source_arr)-1):
+                                source += source_arr[x] + " "
+                    except:
+                        source = "N/A"
                     end_time = datetime.now()
                     delta_min = round((end_time - start_time).total_seconds() / 60)
                     if delta_min < minutes:
@@ -201,8 +205,7 @@ def main():
         #print(arguments.summary)
         #print(arguments.list)
 
-        time = datetime.now()
-        from_interval = int(round((time - timedelta(days=interval)).timestamp()))
+        from_interval = int(round((datetime.now() - timedelta(days=interval)).timestamp()))
 
         command = "/usr/local/bin/lncli listchannels"
         channels_json = json.loads(subprocess.check_output(command, shell = True))
