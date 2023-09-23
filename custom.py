@@ -95,6 +95,11 @@ def main():
                     else:
                         formatted_mins = chalk.green(str(delta_min) + " mins")
                     logging.info(alias + " from " + source.strip() + " finished in " + formatted_mins + " (" + str(result) + ")")
+                    if delta_min == 0:
+                        rebalance_err_file = open("/var/log/mb/rebalance_err.log", 'a')
+                        rebalance_err_file.write(end_time.strftime("%Y-%m-%d %H:%M:%S"))
+                        rebalance_err_file.write(output)
+                        rebalance_err_file.close()
                     time.sleep(30)
                     #logging.error('some error')
                     #logging.debug('some debug')
