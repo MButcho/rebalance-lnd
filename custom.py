@@ -44,9 +44,6 @@ def main():
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
-            command = "/usr/local/bin/lncli listchannels"
-            listchannels = json.loads(subprocess.check_output(command, shell = True))
-            
             bos_file_path = script_path+'/bos.conf'
             bos_tags_path = os.path.expanduser("~")+"/.bos/tags.json"
             logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
@@ -91,9 +88,7 @@ def main():
                     delta_min = 0
                     for _source in _sources_arr:
                         if delta_min == 0:
-                            for _channel in listchannels['channels']:
-                                if _channel['remote_pubkey'] == _source:
-                                    source = _channel['peer_alias']
+                            source = get_listchannels('peer_alias', _source)
                             start_time = datetime.now()        
                             logging.info(alias + " started via " + source + " (a: " + str(round(amount/1000)) + "k, t: " + str(target_ppm) + "(-" + str(fee_delta) + "/-" + str(round(target_ratio,1)) + "%), e: " + str(events) + ")")
                             
@@ -179,17 +174,15 @@ def main():
         result = json.loads(subprocess.check_output(command, shell = True))
         current_height = result['block_height']
 
-        command = "/usr/local/bin/lncli listchannels"
-        listchannels = json.loads(subprocess.check_output(command, shell = True))
         i = 0
         min_blocks_to_expire = 50000
         min_alias = ""
         all_htlcs = ""
         arr_htlcs = []
-        for channel in listchannels['channels']:
-            alias = channel['peer_alias']
-            active = channel['active']
-            for pending_htlc in channel['pending_htlcs']:
+        for _channel in get_listchannels('channels', ""):
+            alias = _channel['peer_alias']
+            active = _channel['active']
+            for pending_htlc in _channel['pending_htlcs']:
                 amount = pending_htlc['amount']
                 expiration_height = pending_htlc['expiration_height']
                 blocks_to_expire = expiration_height - current_height
@@ -253,18 +246,13 @@ def main():
         summary_to = []
         
         interval = arguments.days 
-        #print(arguments.summary)
-        #print(arguments.list)
-
         from_interval = int(round((datetime.now() - timedelta(days=interval)).timestamp()))
 
-        command = "/usr/local/bin/lncli listchannels"
-        listchannels = json.loads(subprocess.check_output(command, shell = True))
         chan_ids = []
         peer_aliases = []
-        for channel in listchannels['channels']:
-            chan_ids.append(channel['chan_id'])
-            peer_aliases.append(channel['peer_alias'])
+        for _channel in get_listchannels('channels', ""):
+            chan_ids.append(_channel['chan_id'])
+            peer_aliases.append(_channel['peer_alias'])
 
         command = "/usr/local/bin/lncli listpayments"
         result = json.loads(subprocess.check_output(command, shell = True))
@@ -323,7 +311,21 @@ def main():
                 print(i_start + str(format_amount_green(_value,0)) + i_end + " → " + _peer)
     else:
         sys.exit(argument_parser.format_help())
+
+def get_listchannels(_field, _public_key):
+    command = "/usr/local/bin/lncli listchannels"
+    listchannels = json.loads(subprocess.check_output(command, shell = True))
     
+    if _public_key != "":
+        _result = "N/A"
+        for _channel in listchannels['channels']:
+            if _channel['remote_pubkey'] == _public_key:
+                _result = _channel[_field]
+        return _result
+    elif _field == "channels":
+        return listchannels['channels']
+    
+   
 def get_argument_parser():
     parent_parser = argparse.ArgumentParser(description="The main script")
     parent_parser.add_argument(
