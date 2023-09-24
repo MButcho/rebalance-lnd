@@ -312,7 +312,7 @@ class Rebalance:
                        max_ppm = int(_vampire_fee_arr[2])
                        #print(alias + ", min: " + str(min_ppm) + ", max: " + str(max_ppm))
                 
-                if ratio_formatted < 75:
+                if ratio_formatted < 50 and own_ppm > remote_ppm:
                     vamp_exists = False
                     for _channel in channels:
                         if _channel["alias"] == alias:
@@ -453,7 +453,7 @@ class Rebalance:
                 if _channel["alias"] in vampires:
                     is_vampire = True
                 
-                if is_vampire:
+                if is_vampire and _channel["ratio"] < 50 and _channel["own_ppm"] > _channel["remote_ppm"]:
                     vamp_exists = False
                     for _vamp_arr in vamp_arr:
                         if _vamp_arr["alias"] == _channel["alias"]:
@@ -476,8 +476,7 @@ class Rebalance:
                         
             
             for _vamp_arr_item in vamp_arr:
-                if _vamp_arr_item["ratio"] < 50:
-                    bos_arr.append(_vamp_arr_item["alias"] + ";" + str(_vamp_arr_item["fee_adjusted"]) + ";" + str(_vamp_arr_item["ratio"]) + ";" + str(_vamp_arr_item["events_count"]) + "\n")              
+                bos_arr.append(_vamp_arr_item["alias"] + ";" + str(_vamp_arr_item["fee_adjusted"]) + ";" + str(_vamp_arr_item["ratio"]) + ";" + str(_vamp_arr_item["events_count"]) + "\n")              
             bos_file.writelines(bos_arr[::-1])
             bos_file.close()
         
