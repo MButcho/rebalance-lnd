@@ -263,7 +263,7 @@ class Rebalance:
                 is_source = True
                 
             if is_source and self.arguments.update:
-                if ratio_formatted > 50:
+                if ratio_formatted > 30:
                     command = "bos tags sources --add " + candidate.remote_pubkey
                 else:
                     command = "bos tags sources --remove " + candidate.remote_pubkey

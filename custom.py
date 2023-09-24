@@ -119,6 +119,8 @@ def main():
                                 rebalance_err_file.write(end_time.strftime("%Y-%m-%d %H:%M:%S"))
                                 rebalance_err_file.write(output)
                                 rebalance_err_file.close()
+                            if delta_min < 10:
+                                delta_min = 0 # to continue next source
                     time.sleep(30)
                     #logging.error('some error')
                     #logging.debug('some debug')
