@@ -311,6 +311,35 @@ def main():
             summary_to_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_to))).items(), key = lambda x:x[1], reverse = True)
             for _peer, _value in summary_to_sorted:
                 print(i_start + str(format_amount_green(_value,0)) + i_end + " → " + _peer)
+    elif arguments.command == "reconnect":
+        command = "/usr/bin/bos reconnect"
+        result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
+        result_arr = result.split("\n")
+        offline = []
+        reconnected = []
+        delimiter = ', '
+        i = 0
+        for _result in result_arr:
+            if "reconnected" in _result:
+                i = 1
+            _alias = re.search("(?<=alias: ).*", _result)
+            if _alias != None: 
+                if i == 0:
+                    offline.append(_alias.group(0).strip())
+                else:
+                    reconnected.append(_alias.group(0).strip())
+        
+        if len(offline) == 0:
+            offline.append("None")
+            icon = "🟢 "
+        else:
+            icon = "🔴 "
+            
+        if len(reconnected) == 0:
+            reconnected.append("None")
+        
+        print(icon + b_start + "Offline: " + b_end + delimiter.join(offline))
+        print(b_start + "Reconnected: " + b_end + delimiter.join(reconnected))        
     else:
         sys.exit(argument_parser.format_help())
 
@@ -382,6 +411,7 @@ def get_argument_parser():
         default=7,
         help="interval in days (default: 7)",
     )
+    parser_reconnect = subparsers.add_parser("reconnect", add_help=False, help="run bos reconnect")
     return parent_parser
     
 success = main()
