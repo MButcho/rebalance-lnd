@@ -184,6 +184,7 @@ def main():
         for _channel in get_listchannels('channels', ""):
             alias = _channel['peer_alias']
             active = _channel['active']
+            chan_point = _channel['channel_point']
             for pending_htlc in _channel['pending_htlcs']:
                 amount = pending_htlc['amount']
                 expiration_height = pending_htlc['expiration_height']
@@ -192,6 +193,10 @@ def main():
                     if active:
                         min_blocks_to_expire = blocks_to_expire
                         min_alias = alias
+                        #fee wall
+                        if blocks_to_expire < 35:
+                            command = "lncli updatechanpolicy --base_fee_msat 0 --time_lock_delta 100 --fee_rate_ppm 2500 --chan_point " + chan_point
+                            result_wall = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
                 
                 if len(pending_htlc) > 0:
                     arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire, 'amount': amount})
