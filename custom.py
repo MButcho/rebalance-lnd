@@ -202,8 +202,9 @@ def main():
                     arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire, 'amount': amount})
                     i+=1
 
-        if i == 0:
+        if i == 0 or min_blocks_to_expire == 50000:
             min_blocks_to_expire = 144
+            min_alias = "N/A"
 
         try:
             zabbix_pending_count = open("/tmp/lnd-pending-count", 'w')
