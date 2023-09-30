@@ -305,8 +305,9 @@ def main():
                     value+=int(value_sat)
                     if arguments.list:
                         print(format_boring_string(date) + " | " + peer_from + " -> " + peer_to + " | " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " | " + format_boring_string("Fee: ") + str(format_amount_red_s(round(int(total_fees_msat)/1000,3),3)))
-
-        print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " | " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " | " + format_boring_string("Fees: ") + i_start + str(format_amount_red_s(round(fees,3),3)) + i_end)
+        
+        if arguments.count == False:
+            print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " | " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " | " + format_boring_string("Fees: ") + i_start + str(format_amount_red_s(round(fees,3),3)) + i_end)
         
         if arguments.summary:
             print(format_boring_string(b_start + u_start + "Sources (from):" + u_end + b_end))
@@ -317,6 +318,15 @@ def main():
             summary_to_sorted = sorted(dict(functools.reduce(operator.add, map(collections.Counter, summary_to))).items(), key = lambda x:x[1], reverse = True)
             for _peer, _value in summary_to_sorted:
                 print(i_start + str(format_amount_green(_value,0)) + i_end + " → " + _peer)
+        if arguments.count:
+            _count = 0
+            if arguments.node == "all":
+                print(len(summary_to))
+            else:
+                for _summary in summary_to:
+                    if arguments.node in _summary:
+                        _count+=1
+                print(_count)
     elif arguments.command == "reconnect":
         command = "/usr/bin/bos reconnect"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
@@ -399,6 +409,12 @@ def get_argument_parser():
     parser_rebalances = subparsers.add_parser("rebalances", add_help=True, help="show past rebalances")
     group_rebalances = parser_rebalances.add_mutually_exclusive_group(required=True)
     group_rebalances.add_argument(
+        "-c", 
+        "--count", 
+        action='store_true', 
+        help="show count of rebalances"
+    )
+    group_rebalances.add_argument(
         "-l", 
         "--list", 
         action='store_true', 
@@ -416,6 +432,12 @@ def get_argument_parser():
         type=int,
         default=7,
         help="interval in days (default: 7)",
+    )
+    parser_rebalances.add_argument(
+        "-n", 
+        "--node",
+        default="all",
+        help="show count of rebalances"
     )
     parser_reconnect = subparsers.add_parser("reconnect", add_help=False, help="run bos reconnect")
     return parent_parser
