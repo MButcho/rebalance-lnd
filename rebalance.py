@@ -361,90 +361,111 @@ class Rebalance:
             #if events_1d < events_1d_low and fee_adjust > 0.1:
             #    fee_adjust_indicator = format_alias_red(" ⬇️")
             #elif events_1d > events_1d_high and fee_adjust < 1.5:
-            #    fee_adjust_indicator = format_alias_green(" ⬆️")                
-            if fee_adjustment == False:
-                fee_adjust_indicator = " (D)"
-            
-            if self.arguments.telegram == False and self.arguments.update == False:
-                print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
-            
-            for _channel in channels:                    
-                alias = _channel["alias"]
-                id_formatted = format_channel_id(_channel["chan_id"])
-                channel_point = _channel["channel_point"]
-                local_formatted = format_amount_green(_channel["local"], 11)
-                remote_formatted = format_amount(_channel["remote"], 11)
-                if _channel["active"]:
-                    alias_formatted = format_alias(_channel["alias"])
-                else:
-                    alias_formatted = format_alias_red(_channel["alias"])
-                own_ppm = int(_channel["own_ppm"])
-                own_ppm_formatted = format_amount_white_s(_channel["own_ppm"], 4)   
-                remote_ppm = int(_channel["remote_ppm"])
-                remote_ppm_formatted = format_amount_white_s(_channel["remote_ppm"], 4)
-                ratio_formatted = _channel["ratio"]
-                events_count_formatted = format_amount_white(_channel["events_count"], 4)
-                fee_adjusted = int(_channel["fee_adjusted"])
+            #    fee_adjust_indicator = format_alias_green(" ⬆️")
+            if self.arguments.forwards == False:
+                if fee_adjustment == False:
+                    fee_adjust_indicator = " (D)"
                 
-                is_router = False
-                is_source = False
-                is_vampire = False
+                if self.arguments.telegram == False and self.arguments.update == False:
+                    print(format_boring_string("Channel ID         |     Inbound |    Outbound |  Own |  Rem | Rat. | Adjust |  24h | Alias"))
                 
-                if alias in routers:
-                    is_router = True                        
-                if alias in sources:
-                    is_source = True
-                if alias in vampires:
-                    is_vampire = True
-                
-                # fee adjustment label
-                fee_indicator = ""
-                if (is_router or is_source) and own_ppm != fee_adjusted:
-                    if own_ppm > fee_adjusted:
-                        fee_indicator = format_alias_green("▼")
+                for _channel in channels:                    
+                    alias = _channel["alias"]
+                    id_formatted = format_channel_id(_channel["chan_id"])
+                    channel_point = _channel["channel_point"]
+                    local_formatted = format_amount_green(_channel["local"], 11)
+                    remote_formatted = format_amount(_channel["remote"], 11)
+                    if _channel["active"]:
+                        alias_formatted = format_alias(_channel["alias"])
                     else:
-                        fee_indicator = format_alias_red("▲")
-                    adjust = fee_indicator + f'{fee_adjusted:>5}' + indicator
-                elif is_router:
-                    adjust = "------"
-                elif is_vampire:
-                    if own_ppm != fee_adjusted:
+                        alias_formatted = format_alias_red(_channel["alias"])
+                    own_ppm = int(_channel["own_ppm"])
+                    own_ppm_formatted = format_amount_white_s(_channel["own_ppm"], 4)   
+                    remote_ppm = int(_channel["remote_ppm"])
+                    remote_ppm_formatted = format_amount_white_s(_channel["remote_ppm"], 4)
+                    ratio_formatted = _channel["ratio"]
+                    events_count_formatted = format_amount_white(_channel["events_count"], 4)
+                    fee_adjusted = int(_channel["fee_adjusted"])
+                    
+                    is_router = False
+                    is_source = False
+                    is_vampire = False
+                    
+                    if alias in routers:
+                        is_router = True                        
+                    if alias in sources:
+                        is_source = True
+                    if alias in vampires:
+                        is_vampire = True
+                    
+                    # fee adjustment label
+                    fee_indicator = ""
+                    if (is_router or is_source) and own_ppm != fee_adjusted:
                         if own_ppm > fee_adjusted:
                             fee_indicator = format_alias_green("▼")
                         else:
                             fee_indicator = format_alias_red("▲")
                         adjust = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                    elif is_router:
+                        adjust = "------"
+                    elif is_vampire:
+                        if own_ppm != fee_adjusted:
+                            if own_ppm > fee_adjusted:
+                                fee_indicator = format_alias_green("▼")
+                            else:
+                                fee_indicator = format_alias_red("▲")
+                            adjust = fee_indicator + f'{fee_adjusted:>5}' + indicator
+                        else:
+                            adjust = "Vampir"
+                    elif is_source:
+                        adjust = "Source"
                     else:
-                        adjust = "Vampir"
-                elif is_source:
-                    adjust = "Source"
-                else:
-                    adjust = "Manual"                        
-                
-                if self.arguments.update:
-                    if own_ppm != fee_adjusted and (is_vampire == False or self.arguments.vampire):
-                        update_policy = self.lnd.update_channel_policy(fee_adjusted, channel_point)
-                        print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
-                else:
-                    if self.arguments.telegram:
-                        #channels_t += alias + ": " + str("{:,}".format(_channel["local"])) + "/" + str("{:,}".format(_channel["remote"])) + "; " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + "; " + str(round(ratio_formatted)) + "%; " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
-                        channels_t += alias + ": " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + ", " + str(round(ratio_formatted)) + "%, " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
+                        adjust = "Manual"                        
+                    
+                    if self.arguments.update:
+                        if own_ppm != fee_adjusted and (is_vampire == False or self.arguments.vampire):
+                            update_policy = self.lnd.update_channel_policy(fee_adjusted, channel_point)
+                            print(f'{time.strftime("%Y-%m-%d %H:%M:%S")} [INFO] Updated fee for {alias}, {own_ppm} -> {fee_adjusted}')
                     else:
-                        print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {adjust} | {events_count_formatted} | {alias_formatted}")                        
+                        if self.arguments.telegram:
+                            #channels_t += alias + ": " + str("{:,}".format(_channel["local"])) + "/" + str("{:,}".format(_channel["remote"])) + "; " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + "; " + str(round(ratio_formatted)) + "%; " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
+                            channels_t += alias + ": " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + ", " + str(round(ratio_formatted)) + "%, " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
+                        else:
+                            print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {adjust} | {events_count_formatted} | {alias_formatted}")
             
             if self.arguments.update == False:
+                forwards_sorted = sorted(channels, key = lambda item:item['events_count'], reverse = True)
                 if self.arguments.telegram:
                     if inactive == 0:
                         icon = "🟢 "
                     else:
                         icon = "🔴 "
-                    print(icon + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Routing: " + str(events_response.last_offset_index) + " (24 hours) / " + str(events_response_7d.last_offset_index) + " (7 days)")
-                    if len(channels_t) > 0:
-                        print(channels_t)
+                    u = 0
+                    if self.arguments.forwards:
+                        for _forward in forwards_sorted:
+                            if _forward['events_count'] > 0:
+                                u+=1
+                        forwards_txt = "Used: <b>" + str(u) + "</b> | "
                     else:
-                        print("All channels are active")
+                        forwards_txt = ""
+                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Forwards: <b>" + str(events_response.last_offset_index) + "</b> (24h) / <b>" + str(events_response_7d.last_offset_index) + "</b> (7d)")
+                    if self.arguments.forwards == False:
+                        if len(channels_t) > 0:
+                            print(channels_t)
+                        else:
+                            print("All channels are active")
+                    else:
+                        for _forward in forwards_sorted:
+                            _events_count = _forward['events_count']
+                            if _events_count > 0:
+                                print("<b>" + str(_events_count) + "</b> via " + _forward['alias'])
                 else:
-                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Routing (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index))
+                    if self.arguments.forwards:
+                        for _forward in forwards_sorted:
+                            _events_count = _forward['events_count']
+                            if _events_count > 0:
+                                print(str(format_amount_green(_events_count,3)) + " - " + _forward['alias'])
+                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Forwards (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index))
 
             # solve vampires and bos
             bos_file = open(bos_file_path, 'w')
@@ -647,6 +668,12 @@ def get_argument_parser():
         "--telegram",
         action='store_true', 
         help="Output in Telegram format in conjunction with --compact",
+    )
+    parser.add_argument(
+        "-w",
+        "--forwards",
+        action='store_true', 
+        help="Show forwards in conjunction with --compact",
     )
     list_group = parser.add_argument_group(
         "list candidates", "Show the unbalanced channels."
