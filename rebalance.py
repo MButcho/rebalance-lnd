@@ -312,7 +312,7 @@ class Rebalance:
                        max_ppm = int(_vampire_fee_arr[2])
                        #print(alias + ", min: " + str(min_ppm) + ", max: " + str(max_ppm))
                 
-                if ratio_formatted < 50 and own_ppm > remote_ppm:
+                if own_ppm > remote_ppm:
                     vamp_exists = False
                     for _channel in channels:
                         if _channel["alias"] == alias:
@@ -326,6 +326,11 @@ class Rebalance:
                     elif events_count == 0 and ratio_formatted > 50:
                         if (own_ppm*(1-vampire_adjust)) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-vampire_adjust))
+                        else:
+                            fee_adjusted = min_ppm
+                    elif events_count == 0 and ratio_formatted > 25:
+                        if (own_ppm*(1-(vampire_adjust/2))) > min_ppm:
+                            fee_adjusted = round(own_ppm*(1-(vampire_adjust/2)))
                         else:
                             fee_adjusted = min_ppm
                     else:
