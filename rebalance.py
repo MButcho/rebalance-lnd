@@ -6,6 +6,7 @@ import subprocess
 import platform
 import random
 import sys
+import json
 from datetime import datetime, timedelta
 
 from yachalk import chalk
@@ -24,7 +25,9 @@ vampire_fees = []
 vampire_adjust = 0.025
 sources = []
 channels = []
-node_file_path = os.path.dirname(sys.argv[0])+'/nodes.conf'
+script_path = os.path.dirname(sys.argv[0])
+node_file_path = script_path+'/nodes.conf'
+
 if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
     nodes_file = open(node_file_path, 'r')
     nodes_arr = nodes_file.read().split('\n')
@@ -46,7 +49,7 @@ if os.path.isfile(node_file_path) and os.stat(node_file_path).st_size > 0:
 else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
-bos_file_path = os.path.dirname(sys.argv[0])+'/bos.conf'
+bos_file_path = script_path+'/bos.conf'
 fee_lowest = 1
 bos_arr = []
 fee_arr = []
@@ -56,7 +59,7 @@ events_target_medium = 25
 events_1d_high = 200
 events_1d_low = 100
 fee_adjustment = False # True = fee adjustments for single node based on events and overall
-fee_adjust_file_path = os.path.dirname(sys.argv[0])+'/fee_adjust.conf'
+fee_adjust_file_path = script_path+'/fee_adjust.conf'
 if os.path.isfile(fee_adjust_file_path) and os.stat(fee_adjust_file_path).st_size > 0: # if empty file
     fee_adjust_file = open(fee_adjust_file_path, 'r')
     fee_adjust = float(fee_adjust_file.read())        
@@ -242,6 +245,9 @@ class Rebalance:
             reverse=True
             )
         
+        command = script_path+"/custom.py rebalances -c -d 1 -n 'list'"
+        rebalances = json.loads(subprocess.check_output(command, shell = True))
+        
         inactive = 0
         channels_t = ""
         for candidate in candidates:
@@ -319,7 +325,13 @@ class Rebalance:
                             vamp_exists = True                            
                     
                     if events_count == 0 and ratio_formatted < 10:
-                        if (own_ppm*(1+vampire_adjust)) < max_ppm:
+                        rebalance_count = 0
+                        for _rebalance in rebalances:
+                            if alias in _rebalance:
+                                rebalance_count+=1
+                        #print(alias + " - " + str(rebalance_count))
+                        
+                        if (own_ppm*(1+vampire_adjust)) < max_ppm and rebalance_count == 0:
                             fee_adjusted = round(own_ppm*(1+vampire_adjust))
                         else:
                             fee_adjusted = max_ppm
@@ -328,7 +340,7 @@ class Rebalance:
                             fee_adjusted = round(own_ppm*(1-vampire_adjust))
                         else:
                             fee_adjusted = min_ppm
-                    elif events_count == 0 and ratio_formatted > 25:
+                    elif events_count == 0 and ratio_formatted > 20:
                         if (own_ppm*(1-(vampire_adjust/2))) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-(vampire_adjust/2)))
                         else:

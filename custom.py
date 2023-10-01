@@ -322,6 +322,8 @@ def main():
             _count = 0
             if arguments.node == "all":
                 print(len(summary_to))
+            elif arguments.node == "list":
+                print(json.dumps(summary_to))
             else:
                 for _summary in summary_to:
                     if arguments.node in _summary:
