@@ -284,16 +284,16 @@ class Rebalance:
             events_response_7d = self.lnd.get_events(_from_7d, _to)
             events_count = 0
             events_count_8h = 0
-            amount = 0
+            volume = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
-                    amount += event.amt_in
+                    volume += event.amt_in
                     if event.timestamp > _from_8h:
                         #print(datetime.fromtimestamp(event.timestamp))
                         events_count_8h += 1
             events_count_formatted = format_amount_white(events_count, 4)
-            amount_formatted = amount/(10**8)
+            #volume_formatted = volume/(10**8)
             
             if events_count > events_target_high:
                 fee_level = "high";
@@ -324,23 +324,22 @@ class Rebalance:
                         if _channel["alias"] == alias:
                             vamp_exists = True                            
                     
-                    if events_count == 0 and ratio_formatted < 10:
-                        rebalance_count = 0
-                        for _rebalance in rebalances:
-                            if alias in _rebalance:
-                                rebalance_count+=1
-                        #print(alias + " - " + str(rebalance_count))
-                        
-                        if (own_ppm*(1+vampire_adjust)) < max_ppm and rebalance_count == 0:
+                    rebalance_count = 0
+                    for _rebalance in rebalances:
+                        if alias in _rebalance:
+                            rebalance_count+=1
+                    
+                    if events_count == 0 and rebalance_count == 0 and ratio_formatted < 10:
+                        if (own_ppm*(1+vampire_adjust)) < max_ppm:
                             fee_adjusted = round(own_ppm*(1+vampire_adjust))
                         else:
                             fee_adjusted = max_ppm
-                    elif events_count == 0 and ratio_formatted > 50:
+                    elif events_count == 0 and rebalance_count == 0 and ratio_formatted > 50:
                         if (own_ppm*(1-vampire_adjust)) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-vampire_adjust))
                         else:
                             fee_adjusted = min_ppm
-                    elif events_count == 0 and ratio_formatted > 20:
+                    elif events_count == 0 and rebalance_count == 0 and ratio_formatted > 20:
                         if (own_ppm*(1-(vampire_adjust/2))) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-(vampire_adjust/2)))
                         else:
@@ -355,12 +354,12 @@ class Rebalance:
                                 _fee_adjusted = _channel["fee_adjusted"]
                                 #if _channel["events_count"] < events_count:
                                 if fee_adjusted < _fee_adjusted:
-                                    channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted}
+                                    channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted, "volume":_channel["volume"]}
                                 elif fee_adjusted > _fee_adjusted:
                                     fee_adjusted = _fee_adjusted
                             v+=1
             
-            channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted})            
+            channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted, "volume":volume})
                 
         #events_1d = events_response.last_offset_index
         #fee_adjust_indicator = " -"
@@ -458,14 +457,16 @@ class Rebalance:
                     else:
                         icon = "🔴 "
                     u = 0
+                    all_volume = 0
+                    for _forward in forwards_sorted:
+                        if _forward['events_count'] > 0:
+                            all_volume += _forward['volume']
+                            u+=1
                     if self.arguments.forwards:
-                        for _forward in forwards_sorted:
-                            if _forward['events_count'] > 0:
-                                u+=1
                         forwards_txt = "Used: <b>" + str(u) + "</b> | "
                     else:
                         forwards_txt = ""
-                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | Forwards: <b>" + str(events_response.last_offset_index) + "</b> (24h) / <b>" + str(events_response_7d.last_offset_index) + "</b> (7d)")
+                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | 24h: <b>" + str(events_response.last_offset_index) + "</b> (<i>" + format_amount_green(all_volume,0) + "</i>) | 7d: <b>" + str(events_response_7d.last_offset_index) + "</b>")
                     if self.arguments.forwards == False:
                         if len(channels_t) > 0:
                             print(channels_t)
@@ -474,15 +475,19 @@ class Rebalance:
                     else:
                         for _forward in forwards_sorted:
                             _events_count = _forward['events_count']
+                            _volume = format_amount_green(_forward['volume'],0)
                             if _events_count > 0:
-                                print("<b>" + str(_events_count) + "</b> via " + _forward['alias'])
+                                print("<b>" + str(_events_count) + "</b> via " + _forward['alias'] + " for <i>" + str(_volume) + "</i>")
                 else:
-                    if self.arguments.forwards:
-                        for _forward in forwards_sorted:
-                            _events_count = _forward['events_count']
-                            if _events_count > 0:
-                                print(str(format_amount_green(_events_count,3)) + " - " + _forward['alias'])
-                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("Forwards (24 hours): ") + str(events_response.last_offset_index) + " | " + format_boring_string("Routing (7 days): ") + str(events_response_7d.last_offset_index))
+                    all_volume = 0
+                    for _forward in forwards_sorted:
+                        _events_count = _forward['events_count']
+                        _volume = format_amount_green(_forward['volume'], 11)
+                        all_volume += _forward['volume']
+                        if _events_count > 0:
+                            if self.arguments.forwards:
+                                print(str(format_amount_red(_events_count,3)) + " | " + str(_volume) + " | " + _forward['alias'])
+                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("24 hours: ") + str(events_response.last_offset_index) + " / " + format_amount_green(all_volume, 0) + " | " + format_boring_string("7 days: ") + str(events_response_7d.last_offset_index))
 
             # solve vampires and bos
             bos_file = open(bos_file_path, 'w')
