@@ -285,15 +285,24 @@ class Rebalance:
             events_count = 0
             events_count_8h = 0
             volume = 0
+            fw_fees = 0
             for event in events_response.forwarding_events:
                 if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
                     events_count += 1
                     volume += event.amt_in
+                    fw_fees += int(event.fee_msat)
                     if event.timestamp > _from_8h:
                         #print(datetime.fromtimestamp(event.timestamp))
                         events_count_8h += 1
             events_count_formatted = format_amount_white(events_count, 4)
             #volume_formatted = volume/(10**8)
+            
+            volume_7d = 0
+            fw_fees_7d = 0
+            for event in events_response_7d.forwarding_events:
+                if event.chan_id_in == candidate.chan_id or event.chan_id_out == candidate.chan_id:
+                    volume_7d += event.amt_in
+                    fw_fees_7d += int(event.fee_msat)
             
             if events_count > events_target_high:
                 fee_level = "high";
@@ -354,12 +363,12 @@ class Rebalance:
                                 _fee_adjusted = _channel["fee_adjusted"]
                                 #if _channel["events_count"] < events_count:
                                 if fee_adjusted < _fee_adjusted:
-                                    channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted, "volume":_channel["volume"]}
+                                    channels[v] = {"alias":_channel["alias"], "active":_channel["active"], "chan_id":_channel["chan_id"], "channel_point":_channel["channel_point"], "local":_channel["local"], "remote":_channel["remote"], "own_ppm":_channel["own_ppm"], "remote_ppm":_channel["remote_ppm"], "ratio":_channel["ratio"], "events_count":_channel["events_count"], "fee_adjusted":fee_adjusted, "volume":_channel["volume"], "volume_7d":_channel["volume_7d"], "fw_fees":_channel["fw_fees"], "fw_fees_7d":_channel["fw_fees_7d"]}
                                 elif fee_adjusted > _fee_adjusted:
                                     fee_adjusted = _fee_adjusted
                             v+=1
             
-            channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted, "volume":volume})
+            channels.append({"alias":alias, "active":active, "chan_id":candidate.chan_id, "channel_point":candidate.channel_point, "local":get_local_available(candidate), "remote":get_remote_available(candidate), "own_ppm":own_ppm, "remote_ppm":remote_ppm, "ratio":ratio_formatted, "events_count":events_count, "fee_adjusted":fee_adjusted, "volume":volume, "volume_7d":volume_7d, "fw_fees":round(fw_fees/1000), "fw_fees_7d":round(fw_fees_7d/1000)})
                 
         #events_1d = events_response.last_offset_index
         #fee_adjust_indicator = " -"
@@ -458,15 +467,21 @@ class Rebalance:
                         icon = "🔴 "
                     u = 0
                     all_volume = 0
+                    all_volume_7d = 0
+                    all_fw_fees = 0
+                    all_fw_fees_7d = 0
                     for _forward in forwards_sorted:
+                        all_volume += _forward['volume']
+                        all_volume_7d += _forward['volume_7d']
+                        all_fw_fees += _forward['fw_fees']
+                        all_fw_fees_7d += _forward['fw_fees_7d']
                         if _forward['events_count'] > 0:
-                            all_volume += _forward['volume']
                             u+=1
                     if self.arguments.forwards:
                         forwards_txt = "Used: <b>" + str(u) + "</b> • "
                     else:
                         forwards_txt = ""
-                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " • 24h: <b>" + str(events_response.last_offset_index) + "</b> (<i>" + format_amount_green(all_volume,0) + "</i>) • 7d: <b>" + str(events_response_7d.last_offset_index) + "</b>")
+                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " • 24h: <b>" + str(events_response.last_offset_index) + "</b> (<i>" + format_amount_green(round(all_volume/2),0) + " • " + format_amount_green(round(all_fw_fees/2),0) + "</i>) • 7d: <b>" + str(events_response_7d.last_offset_index) + "</b> (<i>" + format_amount_green(round(all_volume_7d/2),0) + " • " + format_amount_green(round(all_fw_fees_7d/2),0) + "</i>)")
                     if self.arguments.forwards == False:
                         if len(channels_t) > 0:
                             print(channels_t)
@@ -480,14 +495,20 @@ class Rebalance:
                                 print("<b>" + str(_events_count) + "</b> via " + _forward['alias'] + " for <i>" + str(_volume) + "</i>")
                 else:
                     all_volume = 0
+                    all_volume_7d = 0
+                    all_fw_fees = 0
+                    all_fw_fees_7d = 0
                     for _forward in forwards_sorted:
                         _events_count = _forward['events_count']
                         _volume = format_amount_green(_forward['volume'], 11)
                         all_volume += _forward['volume']
+                        all_volume_7d += _forward['volume_7d']
+                        all_fw_fees += _forward['fw_fees']
+                        all_fw_fees_7d += _forward['fw_fees_7d']
                         if _events_count > 0:
                             if self.arguments.forwards:
                                 print(str(format_amount_red(_events_count,3)) + " | " + str(_volume) + " | " + _forward['alias'])
-                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("24 hours: ") + str(events_response.last_offset_index) + " / " + format_amount_green(all_volume, 0) + " | " + format_boring_string("7 days: ") + str(events_response_7d.last_offset_index))
+                    print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("24 hours: ") + str(events_response.last_offset_index) + " • " + format_amount_green(round(all_volume/2), 0) + " • " + format_amount_red(round(all_fw_fees/2), 0) + " | " + format_boring_string("7 days: ") + str(events_response_7d.last_offset_index) + " • " + format_amount_green(round(all_volume_7d/2), 0) + " • " + format_amount_red(round(all_fw_fees_7d/2), 0))
 
             # solve vampires and bos
             bos_file = open(bos_file_path, 'w')
