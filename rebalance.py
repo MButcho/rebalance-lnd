@@ -445,7 +445,7 @@ class Rebalance:
                     else:
                         if self.arguments.telegram:
                             #channels_t += alias + ": " + str("{:,}".format(_channel["local"])) + "/" + str("{:,}".format(_channel["remote"])) + "; " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + "; " + str(round(ratio_formatted)) + "%; " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
-                            channels_t += alias + ": " + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + ", " + str(round(ratio_formatted)) + "%, " + str(_channel["events_count"]) + (" 🔴" if _channel["active"] == False else "") + "\n"
+                            channels_t += str(round(ratio_formatted)) + "% (" + str(own_ppm) + fee_indicator + "/" + str(remote_ppm) + ") • " + str(_channel["events_count"]) + " • " + alias + (" 🔴" if _channel["active"] == False else "") + "\n"
                         else:
                             print(f"{id_formatted} | {local_formatted} | {remote_formatted} | {own_ppm_formatted} | {remote_ppm_formatted} | {str(round(ratio_formatted)).rjust(3)}% | {adjust} | {events_count_formatted} | {alias_formatted}")
             
@@ -463,10 +463,10 @@ class Rebalance:
                             all_volume += _forward['volume']
                             u+=1
                     if self.arguments.forwards:
-                        forwards_txt = "Used: <b>" + str(u) + "</b> | "
+                        forwards_txt = "Used: <b>" + str(u) + "</b> • "
                     else:
                         forwards_txt = ""
-                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " | 24h: <b>" + str(events_response.last_offset_index) + "</b> (<i>" + format_amount_green(all_volume,0) + "</i>) | 7d: <b>" + str(events_response_7d.last_offset_index) + "</b>")
+                    print(icon + forwards_txt + "Status: " + str(len(candidates)) + "/" + (str(inactive) if inactive == 0 else str(inactive)) + " • 24h: <b>" + str(events_response.last_offset_index) + "</b> (<i>" + format_amount_green(all_volume,0) + "</i>) • 7d: <b>" + str(events_response_7d.last_offset_index) + "</b>")
                     if self.arguments.forwards == False:
                         if len(channels_t) > 0:
                             print(channels_t)

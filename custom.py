@@ -304,10 +304,10 @@ def main():
                     fees+=int(total_fees_msat)/1000
                     value+=int(value_sat)
                     if arguments.list:
-                        print(format_boring_string(date) + " | " + peer_from + " -> " + peer_to + " | " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " | " + format_boring_string("Fee: ") + str(format_amount_red_s(round(int(total_fees_msat)/1000,3),3)))
+                        print(format_boring_string(date) + " • " + peer_from + " -> " + peer_to + " • " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " • " + format_boring_string("Fee: ") + str(format_amount_red(round(int(total_fees_msat)/1000),0)))
         
         if arguments.count == False:
-            print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " | " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " | " + format_boring_string("Fees: ") + i_start + str(format_amount_red_s(round(fees,3),3)) + i_end)
+            print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " • " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " • " + format_boring_string("Fees: ") + i_start + str(format_amount_red(round(fees),0)) + i_end)
         
         if arguments.summary:
             print(format_boring_string(b_start + u_start + "Sources (from):" + u_end + b_end))
