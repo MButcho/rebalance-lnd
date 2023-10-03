@@ -180,6 +180,7 @@ def main():
         min_blocks_to_expire = 50000
         min_alias = ""
         all_htlcs = ""
+        all_amount = 0
         arr_htlcs = []
         for _channel in get_listchannels('channels', ""):
             alias = _channel['peer_alias']
@@ -187,6 +188,7 @@ def main():
             chan_point = _channel['channel_point']
             for pending_htlc in _channel['pending_htlcs']:
                 amount = pending_htlc['amount']
+                all_amount += int(amount)
                 expiration_height = pending_htlc['expiration_height']
                 blocks_to_expire = expiration_height - current_height
                 if blocks_to_expire < min_blocks_to_expire:
@@ -230,9 +232,9 @@ def main():
                 else:
                     formatted_alias = _htlc['alias']
                 print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Amount: ") + formatted_amount + " | " + format_boring_string("Node: ") + formatted_alias)
-            print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias)
+            print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias + " | " + format_boring_string("Total: ") + format_amount_green(all_amount,0) + format_boring_string(" sats"))
         if arguments.telegram:
-            print("💰 " + b_start + str(i) + b_end + " pending HTLCs (min. " + b_start + str(min_blocks_to_expire) + b_end + " on " + b_start + min_alias + b_end + ")")
+            print("💰 " + b_start + str(i) + b_end + " pending HTLCs (min. " + b_start + str(min_blocks_to_expire) + b_end + " on " + b_start + min_alias + b_end + ") for <i>" + format_amount_green(all_amount,0) + "</i>")
             arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
             for _htlc in arr_htlcs_sorted:
                 formatted_blocks_to_expire = format_alias_red(f'{str(_htlc["blocks_to_expire"]):>4}')
