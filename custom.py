@@ -17,7 +17,8 @@ from output import format_alias_red, format_boring_string, format_amount_red_s, 
 mbsats4all = "02e38fd514a17b976cdbeddaf10bf4d0c3ee3211791d353cb755c9237189a91b96"
 
 pid = os.getpid()
-script_path = os.path.dirname(sys.argv[0])
+dir_path = os.path.dirname(sys.argv[0])
+script_path = os.path.abspath(__file__)
 
 def main():
     argument_parser = get_argument_parser()
@@ -44,9 +45,9 @@ def main():
         if arguments.run:
             #max_time = 180 # max script run time
             #minutes = round(max_time / len(vampires)) - 1
-            bos_file_path = script_path+'/bos.conf'
+            bos_file_path = dir_path+'/bos.conf'
             bos_tags_path = os.path.expanduser("~")+"/.bos/tags.json"
-            logging.basicConfig(filename=script_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
+            logging.basicConfig(filename=dir_path+"/bos.log", format='%(asctime)s [%(levelname)s] (' + str(pid) + ') %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
             logging.info("Rebalancing started (" + str(minutes) + " mins)")
 
             bos_file = open(bos_file_path, 'r')
@@ -115,7 +116,7 @@ def main():
                                 formatted_mins = chalk.green(str(delta_min) + " mins")
                             logging.info(alias + " via " + source.strip() + " finished in " + formatted_mins + " (" + str(result) + ")")
                             if delta_min == 0:
-                                rebalance_err_file = open(script_path+"/rebalance_err.log", 'a')
+                                rebalance_err_file = open(dir_path+"/rebalance_err.log", 'a')
                                 rebalance_err_file.write(end_time.strftime("%Y-%m-%d %H:%M:%S"))
                                 rebalance_err_file.write(output)
                                 rebalance_err_file.close()
@@ -170,8 +171,36 @@ def main():
                 mounted = _output_arr[5]                
                 print("🖥 " + avail + " (" + b_start + str(free) + b_end + "%) free of " + size + " disk mounted on " + mounted)
     
+    elif arguments.command == "earn":
+        interval = arguments.days
+        from_interval = int(round((datetime.now() - timedelta(days=interval)).timestamp()))
+        command = "/usr/local/bin/lncli fwdinghistory --start_time " + str(from_interval) + " --max_events 50000"
+        result = json.loads(subprocess.check_output(command, shell = True))
+        fw_fees_interval = round(sum(map(lambda x: int(x['fee_msat']), result['forwarding_events']))/1000)
+        
+        from_24h = int(round((datetime.now() - timedelta(days=1)).timestamp()))
+        command = "/usr/local/bin/lncli fwdinghistory --start_time " + str(from_24h) + " --max_events 50000"
+        result = json.loads(subprocess.check_output(command, shell = True))
+        fw_fees_24h = round(sum(map(lambda x: int(x['fee_msat']), result['forwarding_events']))/1000)
+        
+        command = script_path + " rebalances -f -d 1"
+        r_fees_24 = int(subprocess.check_output(command, shell = True).decode(sys.stdout.encoding))
+        
+        command = script_path + " rebalances -f -d " + str(interval)
+        r_fees_interval = int(subprocess.check_output(command, shell = True).decode(sys.stdout.encoding))
+        
+        if arguments.telegram:
+            print("💰 Earnings • 24h: " + b_start + str(fw_fees_24h-r_fees_24) + b_end + " • " + str(interval) + "d: " + b_start + str(fw_fees_interval-r_fees_interval) + b_end)
+            print("Forwarding fees • 24h: " + b_start + str(fw_fees_24h) + b_end + " • " + str(interval) + "d: " + b_start + str(fw_fees_interval) + b_end)
+            print("Rebalances fees • 24h: -" + b_start + str(r_fees_24) + b_end + " • " + str(interval) + "d: -" + b_start + str(r_fees_interval) + b_end)
+        else:
+            print(format_boring_string("                |  24 hours |    " + str(interval) + " days"))
+            print(format_boring_string("Forwarding fees") + " | " + format_amount_green(fw_fees_24h,9) + " | " + format_amount_green(fw_fees_interval,9))
+            print(format_boring_string("Rebalances fees") + " | " + format_amount_red(-r_fees_24,9) + " | " + format_amount_red(-r_fees_interval,9))
+            print(format_boring_string("Total earnings ") + " | " + (format_amount_green(fw_fees_24h-r_fees_24,9) if (fw_fees_24h-r_fees_24) > 0 else format_amount_red(fw_fees_24h-r_fees_24,9)) + " | " + (format_amount_green(fw_fees_interval-r_fees_interval,9) if fw_fees_interval-r_fees_interval > 0 else format_amount_red(fw_fees_interval-r_fees_interval,9)))
+            
     elif arguments.command == "htlcs":
-        logging.basicConfig(filename=script_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
+        logging.basicConfig(filename=dir_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         command = "/usr/local/bin/lncli getinfo"
         result = json.loads(subprocess.check_output(command, shell = True))
         current_height = result['block_height']
@@ -234,7 +263,7 @@ def main():
                 print(format_boring_string("Expire: ") + str(_htlc["expiration_height"]) + " (" + formatted_blocks_to_expire + ") | " + format_boring_string("Amount: ") + formatted_amount + " | " + format_boring_string("Node: ") + formatted_alias)
             print(format_boring_string("Pending HTLCs: ") + str(i) + " | " + format_boring_string("Min blocks to expire: ") + format_alias_red(str(min_blocks_to_expire)) + format_boring_string(" on ") + min_alias + " | " + format_boring_string("Total: ") + format_amount_green(all_amount,0) + format_boring_string(" sats"))
         if arguments.telegram:
-            print("💰 " + b_start + str(i) + b_end + " pending HTLCs (min. " + b_start + str(min_blocks_to_expire) + b_end + " on " + b_start + min_alias + b_end + ") for <i>" + format_amount_green(all_amount,0) + "</i>")
+            print("⏳ " + b_start + str(i) + b_end + " pending HTLCs (min. " + b_start + str(min_blocks_to_expire) + b_end + " on " + b_start + min_alias + b_end + ") for <i>" + format_amount_green(all_amount,0) + "</i>")
             arr_htlcs_sorted = sorted(arr_htlcs, key = lambda item:item['blocks_to_expire'], reverse = False)
             for _htlc in arr_htlcs_sorted:
                 formatted_blocks_to_expire = format_alias_red(f'{str(_htlc["blocks_to_expire"]):>4}')
@@ -251,11 +280,11 @@ def main():
             print(i_start + "Current Height: " + b_start + str(current_height) + b_end + i_end)
             
     elif arguments.command == "rebalances":
-        #logging.basicConfig(filename=script_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
+        #logging.basicConfig(filename=dir_path+"/lnd-health.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         summary_from = []
         summary_to = []
         
-        interval = arguments.days 
+        interval = arguments.days
         from_interval = int(round((datetime.now() - timedelta(days=interval)).timestamp()))
 
         chan_ids = []
@@ -264,7 +293,7 @@ def main():
             chan_ids.append(_channel['chan_id'])
             peer_aliases.append(_channel['peer_alias'])
 
-        command = "/usr/local/bin/lncli listpayments"
+        command = "/usr/local/bin/lncli listpayments --creation_date_start " + str(from_interval)
         result = json.loads(subprocess.check_output(command, shell = True))
         i = 0
         fees = 0
@@ -275,7 +304,7 @@ def main():
             value_sat = payment['value_sat']
             status = payment['status']
             creation_date = payment['creation_date']
-            if payment_request == "" and status == "SUCCEEDED" and int(creation_date) > from_interval:        
+            if payment_request == "" and status == "SUCCEEDED":        
                 for htlc in payment['htlcs']:
                     route = htlc['route']
                     total_fees_msat = route['total_fees_msat']
@@ -308,8 +337,11 @@ def main():
                     if arguments.list:
                         print(format_boring_string(date) + " • " + peer_from + " -> " + peer_to + " • " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " • " + format_boring_string("Fee: ") + str(format_amount_red(round(int(total_fees_msat)/1000),0)))
         
-        if arguments.count == False:
-            print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " • " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " • " + format_boring_string("Fees: ") + i_start + str(format_amount_red(round(fees),0)) + i_end)
+        summary_line = ""
+        if arguments.count == False and arguments.fees == False:
+            summary_line = format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " • " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " • " + format_boring_string("Fees: ") + i_start + str(format_amount_red(round(fees),0)) + i_end
+            if arguments.telegram:
+                print(summary_line)
         
         if arguments.summary:
             print(format_boring_string(b_start + u_start + "Sources (from):" + u_end + b_end))
@@ -331,6 +363,11 @@ def main():
                     if arguments.node in _summary:
                         _count+=1
                 print(_count)
+        if arguments.fees:
+            print(round(fees))
+            
+        if summary_line != "" and arguments.telegram == False:
+            print(summary_line)
     elif arguments.command == "reconnect":
         command = "/usr/bin/bos reconnect"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
@@ -359,7 +396,7 @@ def main():
             reconnected.append("None")
         
         print(icon + b_start + "Offline: " + b_end + delimiter.join(offline))
-        print(b_start + "Reconnected: " + b_end + delimiter.join(reconnected))        
+        print(b_start + "Reconnected: " + b_end + delimiter.join(reconnected))
     else:
         sys.exit(argument_parser.format_help())
 
@@ -401,6 +438,22 @@ def get_argument_parser():
         help="run bos rebalances",
     )
     parser_disk = subparsers.add_parser("disk", add_help=False, help="show free disk space")
+    parser_earn = subparsers.add_parser("earn", add_help=True, help="show earnings (forwards - rebalances)")
+    parser_earn.add_argument(
+        "-d",
+        "--days",
+        type=int,
+        default=7,
+        help="interval in days (default: 7)",
+    )
+    parser_forwards = subparsers.add_parser("forwards", add_help=True, help="show forwards)")
+    parser_forwards.add_argument(
+        "-d",
+        "--days",
+        type=int,
+        default=7,
+        help="interval in days (default: 7)",
+    )
     parser_htlcs = subparsers.add_parser("htlcs", add_help=True, help="show pending HTLCs")
     group_htlcs = parser_htlcs.add_argument_group() 
     group_htlcs.add_argument(
@@ -417,6 +470,12 @@ def get_argument_parser():
         "--count", 
         action='store_true', 
         help="show count of rebalances"
+    )
+    group_rebalances.add_argument(
+        "-f",
+        "--fees",
+        action='store_true',
+        help="show fees for rebalances",
     )
     group_rebalances.add_argument(
         "-l", 
@@ -436,7 +495,7 @@ def get_argument_parser():
         type=int,
         default=7,
         help="interval in days (default: 7)",
-    )
+    )    
     parser_rebalances.add_argument(
         "-n", 
         "--node",
