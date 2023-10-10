@@ -194,8 +194,6 @@ def main():
             print("Forwarding fees • 24h: " + b_start + str(fw_fees_24h) + b_end + " • " + str(interval) + "d: " + b_start + str(fw_fees_interval) + b_end)
             print("Rebalances fees • 24h: -" + b_start + str(r_fees_24) + b_end + " • " + str(interval) + "d: -" + b_start + str(r_fees_interval) + b_end)
         else:
-            Forwarding fees | 24h:    20,742 | 7d:    95,285
-
             print(format_boring_string("Channel ID      | 24 hours | " + str(interval) + " days"
             print(format_boring_string("Forwarding fees") + " | " + format_amount_green(fw_fees_24h,9) + " | " + format_amount_green(fw_fees_interval,9))
             print(format_boring_string("Rebalances fees") + " | " + format_amount_red(-r_fees_24,9) + " | " + format_amount_red(-r_fees_interval,9))
