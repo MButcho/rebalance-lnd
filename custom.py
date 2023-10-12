@@ -337,8 +337,11 @@ def main():
                     if arguments.list:
                         print(format_boring_string(date) + " • " + peer_from + " -> " + peer_to + " • " + format_boring_string("Amount: ") + str(format_amount_green(int(value_sat),0)) + " • " + format_boring_string("Fee: ") + str(format_amount_red(round(int(total_fees_msat)/1000),0)))
         
+        summary_line = ""
         if arguments.count == False and arguments.fees == False:
-            print(format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " • " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " • " + format_boring_string("Fees: ") + i_start + str(format_amount_red(round(fees),0)) + i_end)
+            summary_line = format_boring_string("☯️ Rebalances count (" + str(interval) + " days): ") + b_start + format_amount_red_s(str(i),0) + b_end + " • " + format_boring_string("Value: ") + b_start + i_start + str(format_amount_green(round(int(value)),0)) + i_end + b_end + " • " + format_boring_string("Fees: ") + i_start + str(format_amount_red(round(fees),0)) + i_end
+            if arguments.telegram:
+                print(summary_line)
         
         if arguments.summary:
             print(format_boring_string(b_start + u_start + "Sources (from):" + u_end + b_end))
@@ -362,6 +365,9 @@ def main():
                 print(_count)
         if arguments.fees:
             print(round(fees))
+            
+        if summary_line != "" and arguments.telegram == False:
+            print(summary_line)
     elif arguments.command == "reconnect":
         command = "/usr/bin/bos reconnect"
         result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
