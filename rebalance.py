@@ -297,6 +297,11 @@ class Rebalance:
             events_count_formatted = format_amount_white(events_count, 4)
             #volume_formatted = volume/(10**8)
             
+            event_count_sum = events_count
+            for _channel in channels:
+                if _channel["alias"] == alias:
+                    event_count_sum += _channel["events_count"]
+            
             volume_7d = 0
             fw_fees_7d = 0
             for event in events_response_7d.forwarding_events:
@@ -338,17 +343,17 @@ class Rebalance:
                         if alias in _rebalance:
                             rebalance_count+=1
                     
-                    if events_count == 0 and rebalance_count == 0 and ratio_formatted < 10:
+                    if event_count_sum == 0 and rebalance_count == 0 and ratio_formatted < 10:
                         if (own_ppm*(1+vampire_adjust)) < max_ppm:
                             fee_adjusted = round(own_ppm*(1+vampire_adjust))
                         else:
                             fee_adjusted = max_ppm
-                    elif events_count == 0 and rebalance_count == 0 and ratio_formatted > 50:
+                    elif event_count_sum == 0 and rebalance_count == 0 and ratio_formatted > 50:
                         if (own_ppm*(1-vampire_adjust)) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-vampire_adjust))
                         else:
                             fee_adjusted = min_ppm
-                    elif events_count == 0 and rebalance_count == 0 and ratio_formatted > 20:
+                    elif event_count_sum == 0 and rebalance_count == 0 and ratio_formatted > 20:
                         if (own_ppm*(1-(vampire_adjust/2))) > min_ppm:
                             fee_adjusted = round(own_ppm*(1-(vampire_adjust/2)))
                         else:
