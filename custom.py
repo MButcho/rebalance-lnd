@@ -95,7 +95,7 @@ def main():
                             
                             temp = tempfile.NamedTemporaryFile()
                             os.chmod(temp.name, 0o644)
-                            command = "/usr/bin/bos rebalance --in '" + alias + "' --out '" + source + "' --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
+                            command = "/usr/bin/bos rebalance --in '" + alias + "' --out '" + _source + "' --max-fee-rate " + str(target_ppm) + " --max-fee 5000 --avoid-high-fee-routes --avoid vampires --minutes " + str(minutes) + " --amount " + str(amount) + " >> " + temp.name
                             #source = "N/A"
                             result = os.system(command)
                             try:
@@ -135,22 +135,34 @@ def main():
             i = 0
             print("☯ Running (" + b_start + str(len(procs_arr)) + b_end + ") bos rebalances (" + b_start + str(minutes) + " mins" + b_end + ")")
             for _procs in procs_arr:
-                source = "N/A"
-                try:
-                    tmp_file = open(tmp_arr[i], 'r')
-                    output = tmp_file.read()
-                    tmp_file.close()
-                    regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
-                    if regex != None:                    
-                        source_arr = regex.group(0).split(" ")
-                        source = ""
-                        for x in range(0, len(source_arr)-1):
-                            source += source_arr[x] + " "
-                except:
-                    source = "N/A"
+                _procs_arr = _procs.split("--")
+                regex = re.search("(?<=')(.*?)(?=')", _procs_arr[2])
+                #regex = re.search("'(.*?)'", _procs_arr[2])
+                _source = regex.group(0)
                 
-                #print("Source: " + b_start + source.strip() + b_end + " | " + _procs)
-                print(b_start + str(i+1) + ". " + b_end + _procs)
+                if len(_source) == 66:
+                    source = get_listchannels('peer_alias', _source)
+                else:
+                    source = _source
+                _proc = _procs.replace(_source, source)
+                
+                # source = "N/A"
+                # try:
+                    # tmp_file = open(tmp_arr[i], 'r')
+                    # output = tmp_file.read()
+                    # tmp_file.close()
+                    # regex = re.search("(?<=outgoing_peer_to_increase_inbound: ).*", output)
+                    # if regex != None:                    
+                        # source_arr = regex.group(0).split(" ")
+                        # source = ""
+                        # for x in range(0, len(source_arr)-1):
+                            # source += source_arr[x] + " "                            
+                        # _source = get_listchannels('peer_alias', source)
+                # except:
+                    # source = "N/A"
+                
+                #print("Source: " + b_start + source.strip() + b_end + " | " + _proc)
+                print(b_start + str(i+1) + ". " + b_end + _proc)
                 i+=1
             
     elif arguments.command == "disk":
