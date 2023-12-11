@@ -14,7 +14,7 @@ from yachalk import chalk
 from lnd import Lnd
 from logic import Logic
 from output import Output, format_alias, format_alias_red, format_alias_green, format_ppm, format_amount, format_amount_green, format_amount_white, format_amount_white_s, \
-    format_boring_string, print_bar, format_channel_id, format_error, format_boring_string, format_amount_red
+    format_boring_string, print_bar, format_channel_id, format_error, format_boring_string, format_amount_red, format_amount_red_s
 
 
 # define nodes, fee adjustment, ...
@@ -50,7 +50,7 @@ else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
 bos_file_path = script_path+'/bos.conf'
-fee_lowest = 1
+fee_lowest = 49
 bos_arr = []
 fee_arr = []
 vamp_arr = []
@@ -294,7 +294,7 @@ class Rebalance:
                     if event.timestamp > _from_8h:
                         #print(datetime.fromtimestamp(event.timestamp))
                         events_count_8h += 1
-            events_count_formatted = format_amount_white(events_count, 4)
+            events_count_formatted = format_amount_white_s(events_count, 4)
             #volume_formatted = volume/(10**8)
             
             event_count_sum = events_count
@@ -414,7 +414,7 @@ class Rebalance:
                     remote_ppm = int(_channel["remote_ppm"])
                     remote_ppm_formatted = format_amount_white_s(_channel["remote_ppm"], 4)
                     ratio_formatted = _channel["ratio"]
-                    events_count_formatted = format_amount_white(_channel["events_count"], 4)
+                    events_count_formatted = format_amount_white_s(_channel["events_count"], 4)
                     fee_adjusted = int(_channel["fee_adjusted"])
                     
                     is_router = False
@@ -512,7 +512,7 @@ class Rebalance:
                         all_fw_fees_7d += _forward['fw_fees_7d']
                         if _events_count > 0:
                             if self.arguments.forwards:
-                                print(str(format_amount_red(_events_count,3)) + " | " + str(_volume) + " | " + _forward['alias'])
+                                print(str(format_amount_red_s(_events_count,4)) + " | " + str(_volume) + " | " + _forward['alias'])
                     print(format_boring_string("Nodes: ") + str(format_amount_green(len(candidates),1)) + "/" + (str(format_boring_string(inactive)) if inactive == 0 else str(format_amount_red(inactive, 1))) + " | " + format_boring_string("24 hours: ") + str(events_response.last_offset_index) + " • " + format_amount_green(round(all_volume/2), 0) + " • " + format_amount_red(round(all_fw_fees/2), 0) + " | " + format_boring_string("7 days: ") + str(events_response_7d.last_offset_index) + " • " + format_amount_green(round(all_volume_7d/2), 0) + " • " + format_amount_red(round(all_fw_fees_7d/2), 0))
 
             # solve vampires and bos
