@@ -50,12 +50,12 @@ else:
     sys.exit("Please create nodes.conf (copy and edit nodes.conf.sample)")
 
 bos_file_path = script_path+'/bos.conf'
-fee_lowest = 49
+#fee_lowest = 49
 bos_arr = []
 fee_arr = []
 vamp_arr = []
-events_target_high = 50
-events_target_medium = 25
+#events_target_high = 50
+#events_target_medium = 25
 events_1d_high = 200
 events_1d_low = 100
 fee_adjustment = False # True = fee adjustments for single node based on events and overall
@@ -248,6 +248,11 @@ class Rebalance:
         command = script_path+"/custom.py rebalances -c -d 1 -n 'list'"
         rebalances = json.loads(subprocess.check_output(command, shell = True))
         
+        command = "lncli estimatefee '{\"bc1pa44faqxvemdl2yp2cwtkgz9al5ppqvm78820cxgckw5zdnshakes98tuv5\": 1000}' --conf_target 1"
+        result = json.loads(subprocess.check_output(command, shell = True))
+        btc_fee = int(result['sat_per_vbyte'])
+        #btc_fee = 49
+        
         inactive = 0
         channels_t = ""
         for candidate in candidates:
@@ -309,17 +314,11 @@ class Rebalance:
                     volume_7d += event.amt_in
                     fw_fees_7d += int(event.fee_msat)
             
-            if events_count > events_target_high:
-                fee_level = "high";
-            elif events_count > events_target_medium:
-                fee_level = "medium";
-            else:
-                fee_level = "low";
             indicator = ""
             
             fee_adjusted = own_ppm            
             if is_router or is_source:
-                fee_adjusted = round(get_fee_adjusted(ratio_formatted, fee_level))
+                fee_adjusted = round(get_fee_adjusted(ratio_formatted, btc_fee))
             
             # create vampire arr
             if alias in vampires:
@@ -920,22 +919,30 @@ def get_columns():
         return 80
 
 
-def get_fee_adjusted(_ratio, _level):
-    if _level == "low":
-        coeff1 = 49
-        coeff2 = 5.5        
-    elif _level == "medium":
+def get_fee_adjusted(_ratio, _btc_fee):
+    if _btc_fee > 140: # red
+        coeff1 = 100
+        coeff2 = 6
+        coeff3 = 299
+    elif _btc_fee > 80: #yellow
+        coeff1 = 100
+        coeff2 = 7.8
+        coeff3 = 199
+    elif _btc_fee > 20: #green
         coeff1 = 75
-        coeff2 = 14.1        
-    else:
-        coeff1 = 99
-        coeff2 = 20
-    new_fee = ((coeff1 - _ratio) ** 2 ) / coeff2
-    if new_fee < fee_lowest:
-        new_fee = fee_lowest;
+        coeff2 = 6.3
+        coeff3 = 99
+    else: #blue
+        coeff1 = 49
+        coeff2 = 5.4
+        coeff3 = 1
+        
+    new_fee = (((coeff1 - _ratio) ** 2 ) / coeff2) + coeff3
+    if new_fee < coeff3:
+        new_fee = coeff3;
     if _ratio > coeff1:
-        new_fee = fee_lowest;
-    return new_fee * fee_adjust
+        new_fee = coeff3;
+    return (new_fee * fee_adjust)
 
 
 success = main()
