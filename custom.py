@@ -211,6 +211,14 @@ def main():
             print(format_boring_string("Rebalances fees") + " | " + format_amount_red(-r_fees_24,9) + " | " + format_amount_red(-r_fees_interval,9))
             print(format_boring_string("Total earnings ") + " | " + (format_amount_green(fw_fees_24h-r_fees_24,9) if (fw_fees_24h-r_fees_24) > 0 else format_amount_red(fw_fees_24h-r_fees_24,9)) + " | " + (format_amount_green(fw_fees_interval-r_fees_interval,9) if fw_fees_interval-r_fees_interval > 0 else format_amount_red(fw_fees_interval-r_fees_interval,9)))
             
+    elif arguments.command == "estimatefee":
+        conf_target = arguments.conf_target
+        command = "lncli estimatefee '{\"bc1pa44faqxvemdl2yp2cwtkgz9al5ppqvm78820cxgckw5zdnshakes98tuv5\": 1000}' --conf_target " + str(conf_target)
+        result = json.loads(subprocess.check_output(command, shell = True))
+        btc_fee = int(result['sat_per_vbyte'])
+                       
+        print("💲 " + b_start + str(btc_fee) + " sat/vB" + b_end + " is BTC fee estimate for confirmation in " + str(conf_target) + " block(s)")
+                
     elif arguments.command == "htlcs":
         logging.basicConfig(filename=dir_path+"/lnd-htlcs.log", format='%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y/%m/%d %H:%M:%S', level=logging.INFO)
         command = "/usr/local/bin/lncli getinfo"
@@ -239,18 +247,11 @@ def main():
                         min_alias = alias
                         if blocks_to_expire < 35:
                             # create fee wall
-                            command = "lncli updatechanpolicy --base_fee_msat 0 --time_lock_delta 100 --fee_rate_ppm 5000 --chan_point " + chan_point
+                            command = "lncli updatechanpolicy --base_fee_msat 0 --time_lock_delta 100 --fee_rate_ppm 9999 --chan_point " + chan_point
                             result_wall = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
-                            #logging.info("Created fee wall for " + alias + " (" + remote_pubkey + ")")
-                            #result = subprocess.check_output(command, shell = True).decode(sys.stdout.encoding)
-                            # remove from source tag
+                            # remove from sources tag
                             command = "bos tags sources --remove " + remote_pubkey
-                            result_tags = subprocess.run(command, shell = True, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
-                            #logging.info("Removed " + alias + " (" + remote_pubkey + ") from sources" )
-                            # remove from vampire tag
-                            command = "bos tags vampires --remove " + remote_pubkey
-                            result_tags = subprocess.run(command, shell = True, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
-                            #logging.info("Removed " + alias + " (" + remote_pubkey + ") from vampires" )
+                            result_tags = subprocess.run(command, shell = True, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)                            
                 
                 if len(pending_htlc) > 0:
                     arr_htlcs.append({'alias':alias, 'active':active, 'expiration_height':expiration_height, 'blocks_to_expire':blocks_to_expire, 'amount': amount})
@@ -468,6 +469,14 @@ def get_argument_parser():
         type=int,
         default=7,
         help="interval in days (default: 7)",
+    )
+    parser_estimatefee = subparsers.add_parser("estimatefee", add_help=False, help="show btc fee estimate")
+    parser_estimatefee.add_argument(
+        "-c",
+        "--conf_target",
+        type=int,
+        default=1,
+        help="confirmation target in blocks (default: 1)",
     )
     parser_forwards = subparsers.add_parser("forwards", add_help=True, help="show forwards)")
     parser_forwards.add_argument(
