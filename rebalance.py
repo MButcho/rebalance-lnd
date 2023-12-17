@@ -922,19 +922,19 @@ def get_columns():
 def get_fee_adjusted(_ratio, _btc_fee):
     if _btc_fee > 140: # red
         coeff1 = 100
-        coeff2 = 6
-        coeff3 = 299
+        coeff2 = 12.5
+        coeff3 = 199
     elif _btc_fee > 80: #yellow
         coeff1 = 100
-        coeff2 = 7.8
-        coeff3 = 199
+        coeff2 = 14.3
+        coeff3 = 99
     elif _btc_fee > 20: #green
         coeff1 = 75
-        coeff2 = 6.3
-        coeff3 = 99
+        coeff2 = 10.3
+        coeff3 = 49
     else: #blue
         coeff1 = 49
-        coeff2 = 5.4
+        coeff2 = 6
         coeff3 = 1
         
     new_fee = (((coeff1 - _ratio) ** 2 ) / coeff2) + coeff3
