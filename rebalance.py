@@ -517,30 +517,31 @@ class Rebalance:
             # solve vampires and bos
             bos_file = open(bos_file_path, 'w')
             for _channel in channels:
-                is_vampire = False
-                if _channel["alias"] in vampires:
-                    is_vampire = True
-                
-                if is_vampire and _channel["ratio"] < 50 and _channel["own_ppm"] > _channel["remote_ppm"]:
-                    vamp_exists = False
-                    for _vamp_arr in vamp_arr:
-                        if _vamp_arr["alias"] == _channel["alias"]:
-                            vamp_exists = True
-                                
-                    if not vamp_exists:
-                        if _channel["active"]:
-                            if self.arguments.vampire:
-                                _fee_adjusted = _channel["fee_adjusted"]
-                            else:
-                                _fee_adjusted = _channel["own_ppm"]                                
-                            vamp_arr.append({'alias':_channel["alias"], 'fee_adjusted':_fee_adjusted, 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]})
-                    else:
-                        v = 0
+                if int(_channel["own_ppm"]) < 5000:
+                    is_vampire = False
+                    if _channel["alias"] in vampires:
+                        is_vampire = True
+                    
+                    if is_vampire and _channel["ratio"] < 50 and _channel["own_ppm"] > _channel["remote_ppm"]:
+                        vamp_exists = False
                         for _vamp_arr in vamp_arr:
                             if _vamp_arr["alias"] == _channel["alias"]:
-                                if _vamp_arr["events_count"] < _channel["events_count"]:
-                                    vamp_arr[v] = {'alias':_channel["alias"], 'fee_adjusted':_channel["fee_adjusted"], 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]}
-                            v+=1           
+                                vamp_exists = True
+                                    
+                        if not vamp_exists:
+                            if _channel["active"]:
+                                if self.arguments.vampire:
+                                    _fee_adjusted = _channel["fee_adjusted"]
+                                else:
+                                    _fee_adjusted = _channel["own_ppm"]                                
+                                vamp_arr.append({'alias':_channel["alias"], 'fee_adjusted':_fee_adjusted, 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]})
+                        else:
+                            v = 0
+                            for _vamp_arr in vamp_arr:
+                                if _vamp_arr["alias"] == _channel["alias"]:
+                                    if _vamp_arr["events_count"] < _channel["events_count"]:
+                                        vamp_arr[v] = {'alias':_channel["alias"], 'fee_adjusted':_channel["fee_adjusted"], 'ratio':_channel["ratio"], 'events_count':_channel["events_count"]}
+                                v+=1
                         
             
             for _vamp_arr_item in vamp_arr:
