@@ -405,9 +405,9 @@ class Rebalance:
                     local_formatted = format_amount_green(_channel["local"], 11)
                     remote_formatted = format_amount(_channel["remote"], 11)
                     if _channel["active"]:
-                        alias_formatted = format_alias(_channel["alias"])
+                        alias_formatted = format_alias(_channel["alias"][:30])
                     else:
-                        alias_formatted = format_alias_red(_channel["alias"])
+                        alias_formatted = format_alias_red(_channel["alias"][:30])
                     own_ppm = int(_channel["own_ppm"])
                     own_ppm_formatted = format_amount_white_s(_channel["own_ppm"], 4)   
                     remote_ppm = int(_channel["remote_ppm"])
