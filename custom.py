@@ -63,8 +63,8 @@ def main():
                     ratio = round(float(str_line_arr[2]))
                     events = round(int(str_line_arr[3]))
                     
-                    target_ratio = 7.5+(ratio/15) # check https://www.desmos.com/calculator
-                    #target_ratio = 10-(ratio/7.5) # check https://www.desmos.com/calculator
+                    target_ratio = 10+(ratio/20) # check https://www.desmos.com/calculator
+                    #target_ratio = 7.5+(ratio/15) # check https://www.desmos.com/calculator
                     event_ratio = 1.5-(events/20) # check https://www.desmos.com/calculator
                     if event_ratio < 1:
                         event_ratio = 1
